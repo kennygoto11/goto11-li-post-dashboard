@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post Studio — Go To 11</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --purple: #9439bf;
+    --purple-dark: #7a2fa3;
+    --purple-faint: rgba(148, 57, 191, 0.08);
+    --purple-ring: rgba(148, 57, 191, 0.18);
+    --light-purple: #bfb1c4;
+    --sand: #f4d4b7;
+    --grey: #66615c;
+    --offwhite: #ebeaeb;
+    --bg: #f7f6f7;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.10);
+    --border-strong: rgba(0,0,0,0.18);
+    --text-primary: #1a1a1a;
+    --text-secondary: #5a5560;
+    --text-muted: #9490a0;
+    --green: #15803d;
+    --green-bg: #f0fdf4;
+    --green-border: #86efac;
+    --red: #b91c1c;
+    --gold: #a16207;
+    --gold-bg: #fefce8;
+    --gold-border: #fde047;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+  body {
+    font-family: 'PT Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--purple);
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--purple);
+    flex-shrink: 0;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: 'PT Sans', sans-serif;
+  }
+
+  .api-key-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .api-key-btn:hover { border-color: var(--purple); color: var(--purple); }
+  .api-key-btn.connected { color: var(--green); border-color: var(--green-border); }
+
+  /* ── Layout ── */
+  .main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  /* ── Step indicator ── */
+  .steps {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .step-node { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+  .step-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    border: 1.5px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+    transition: all 0.25s ease;
+  }
+
+  .step-circle.active {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: #fff;
+    box-shadow: 0 0 0 4px var(--purple-ring);
+  }
+
+  .step-circle.done {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: #fff;
+    opacity: 0.45;
+  }
+
+  .step-name {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .step-name.active { color: var(--purple); }
+
+  .step-connector {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin: 0 8px;
+    margin-bottom: 18px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* ── Section heading ── */
+  .section-label {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* ── Textarea / Input ── */
+  .field { margin-bottom: 1.5rem; }
+
+  .field-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  textarea, input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: 'PT Sans', sans-serif;
+    color: var(--text-primary);
+    background: var(--bg);
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  textarea:focus, input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px var(--purple-ring);
+    background: var(--surface);
+  }
+
+  input[type="number"] { resize: none; }
+
+  /* ── Format grid ── */
+  .format-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .format-card {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg);
+    user-select: none;
+  }
+
+  .format-card:hover {
+    border-color: var(--light-purple);
+    background: var(--surface);
+  }
+
+  .format-card.selected {
+    border-color: var(--purple);
+    border-width: 1.5px;
+    background: var(--purple-faint);
+  }
+
+  .format-card-name {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .format-card.selected .format-card-name { color: var(--purple); }
+
+  .format-card-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+
+  .format-full { grid-column: span 2; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-primary);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--bg); }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-primary {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: #fff;
+  }
+
+  .btn-primary:hover { background: var(--purple-dark); }
+
+  .btn-sm {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 1.5rem;
+  }
+
+  /* ── Loading ── */
+  .loader {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 1rem;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .loader.show { display: flex; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--light-purple);
+    border-top-color: var(--purple);
+    animation: spin 0.75s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Error ── */
+  .error {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: #b91c1c;
+  }
+
+  /* ── Hook cards ── */
+  .hook-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 10px;
+    background: var(--bg);
+  }
+
+  .hook-card:hover {
+    border-color: var(--purple);
+    background: var(--surface);
+  }
+
+  .hook-card.selected {
+    border-color: var(--purple);
+    border-width: 1.5px;
+    background: var(--purple-faint);
+  }
+
+  .hook-tag {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--purple);
+    margin-bottom: 7px;
+  }
+
+  .hook-text {
+    font-size: 15px;
+    color: var(--text-primary);
+    line-height: 1.55;
+  }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    background: var(--purple-faint);
+    color: var(--purple);
+    border: 1px solid rgba(148,57,191,0.2);
+  }
+
+  /* ── Post output ── */
+  .post-output {
+    width: 100%;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    font-size: 15px;
+    font-family: 'PT Sans', sans-serif;
+    line-height: 1.7;
+    color: var(--text-primary);
+    background: var(--bg);
+    min-height: 300px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .post-output:focus {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px var(--purple-ring);
+    background: var(--surface);
+  }
+
+  /* ── Word count ── */
+  .wc {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+  }
+
+  .wc.good { color: var(--green); }
+  .wc.over { color: var(--red); }
+
+  /* ── Checklist ── */
+  .checklist { margin-top: 1.5rem; }
+
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .check-item:last-child { border-bottom: none; }
+
+  .check-item input[type="checkbox"] {
+    margin-top: 2px;
+    accent-color: var(--purple);
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .check-item span {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
+
+  .check-item.done span {
+    color: var(--text-muted);
+    text-decoration: line-through;
+  }
+
+  /* ── Copy success ── */
+  .copy-ok {
+    font-size: 12px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    color: var(--green);
+    display: none;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+
+  .divider-thick {
+    border: none;
+    border-top: 2px solid var(--border);
+    margin: 3rem 0 2rem;
+  }
+
+  /* ── Panel ── */
+  .panel { display: none; animation: fadeIn 0.2s ease; }
+  .panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Post meta row ── */
+  .post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  /* ── Tracker ── */
+  .tracker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tracker-title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text-primary);
+  }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .summary-stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    text-align: centre;
+  }
+
+  .summary-stat-value {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .summary-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+  }
+
+  /* ── Posts table ── */
+  .posts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .posts-table th {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-strong);
+    white-space: nowrap;
+  }
+
+  .posts-table td {
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    color: var(--text-secondary);
+  }
+
+  .posts-table tr.clickable-row { cursor: pointer; transition: background 0.1s; }
+  .posts-table tr.clickable-row:hover { background: var(--purple-faint); }
+
+  .post-preview {
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+    font-weight: 400;
+  }
+
+  .flag-eng {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid var(--green-border);
+  }
+
+  .flag-save {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Nunito', sans-serif;
+    background: var(--gold-bg);
+    color: var(--gold);
+    border: 1px solid var(--gold-border);
+  }
+
+  /* ── Expanded row ── */
+  .expanded-row td {
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .expanded-content {
+    padding: 16px 10px;
+    background: var(--bg);
+    animation: fadeIn 0.15s ease;
+  }
+
+  .expanded-section {
+    margin-bottom: 14px;
+  }
+
+  .expanded-section:last-child { margin-bottom: 0; }
+
+  .expanded-label {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+
+  .expanded-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+
+  .metric-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+  }
+
+  .metric-item-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .metric-item-value {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-top: 2px;
+  }
+
+  /* ── Metric entry form ── */
+  .metric-form {
+    margin-top: 12px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .metric-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .metric-form-field label {
+    display: block;
+    font-size: 10px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 3px;
+  }
+
+  .metric-form-field input {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 14px;
+    border-radius: var(--radius-sm);
+    resize: none;
+  }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+
+  .modal h3 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .modal p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 500px) {
+    .main { padding: 1.5rem 1rem 3rem; }
+    .card { padding: 1.25rem; }
+    .format-grid { grid-template-columns: 1fr; }
+    .format-full { grid-column: span 1; }
+    .header { padding: 0 1rem; }
+    .posts-table { font-size: 12px; }
+    .posts-table th, .posts-table td { padding: 8px 6px; }
+    .summary-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Go To 11
+  </div>
+  <div class="header-right">
+    <span class="header-label">Post Studio</span>
+    <button class="api-key-btn" id="api-key-btn" onclick="showApiKeyModal()">API key</button>
+  </div>
+</header>
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="api-modal">
+  <div class="modal">
+    <h3>Anthropic API key</h3>
+    <p>Your key is stored locally in this browser. It never leaves your device except to call the Anthropic API directly.</p>
+    <div class="field" style="margin-bottom: 12px;">
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." style="font-size: 14px;">
+    </div>
+    <div class="btn-row" style="margin-top: 0;">
+      <button class="btn btn-primary btn-sm" onclick="saveApiKey()">Save</button>
+      <button class="btn btn-sm" onclick="closeApiKeyModal()">Cancel</button>
+      <button class="btn btn-sm" onclick="clearApiKey()" style="margin-left: auto; color: var(--red);">Clear key</button>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step-node">
+      <div class="step-circle active" id="circle-1">1</div>
+      <div class="step-name active" id="name-1">Seed idea</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-node">
+      <div class="step-circle" id="circle-2">2</div>
+      <div class="step-name" id="name-2">Pick a hook</div>
+    </div>
+    <div class="step-connector"></div>
+    <div class="step-node">
+      <div class="step-circle" id="circle-3">3</div>
+      <div class="step-name" id="name-3">Your post</div>
+    </div>
+  </div>
+
+  <!-- ── STEP 1 ── -->
+  <div class="panel active" id="panel-1">
+    <div class="card">
+      <div class="field">
+        <label class="field-label" for="seed">What's on your mind?</label>
+        <textarea id="seed" rows="5" placeholder="A rough thought, a thing you noticed, a client moment, a hot take. Don't polish it."></textarea>
+        <div class="field-hint">The messier the better. You edit the output, not the input.</div>
+      </div>
+
+      <div class="field" style="margin-bottom: 0;">
+        <label class="field-label">Format</label>
+        <div class="format-grid">
+          <div class="format-card selected" data-format="auto">
+            <div class="format-card-name">Auto</div>
+            <div class="format-card-desc">Pick what fits the idea</div>
+          </div>
+          <div class="format-card" data-format="observation">
+            <div class="format-card-name">Observation</div>
+            <div class="format-card-desc">You noticed something, here's why it matters</div>
+          </div>
+          <div class="format-card" data-format="contrarian">
+            <div class="format-card-name">Contrarian reframe</div>
+            <div class="format-card-desc">Challenge a common assumption</div>
+          </div>
+          <div class="format-card" data-format="story">
+            <div class="format-card-name">Story → Lesson</div>
+            <div class="format-card-desc">A specific moment, then the takeaway</div>
+          </div>
+          <div class="format-card format-full" data-format="framework">
+            <div class="format-card-name">Framework</div>
+            <div class="format-card-desc">Spotlight a model or concept with a practical example</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="gen-hooks-btn" onclick="generateHooks()">Generate hooks →</button>
+      </div>
+
+      <div class="loader" id="loader-1">
+        <div class="spinner"></div>
+        <span>Generating 3 hooks...</span>
+      </div>
+      <div class="error" id="error-1"></div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2 ── -->
+  <div class="panel" id="panel-2">
+    <div class="card">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap;">
+        <span style="font-size: 14px; color: var(--text-secondary);">Pick the hook that stops the scroll.</span>
+        <span class="badge" id="format-badge"></span>
+      </div>
+
+      <div id="hooks-container"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="write-btn" onclick="generatePost()" disabled>Write the post →</button>
+        <button class="btn" onclick="goBack(1)">← Back</button>
+        <button class="btn" onclick="regenHooks()">Try new hooks</button>
+      </div>
+
+      <div class="loader" id="loader-2">
+        <div class="spinner"></div>
+        <span>Writing your post...</span>
+      </div>
+      <div class="error" id="error-2"></div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3 ── -->
+  <div class="panel" id="panel-3">
+    <div class="card">
+      <div class="post-meta">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span class="badge" id="format-badge-3"></span>
+          <span class="wc" id="wc"></span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span class="copy-ok" id="copy-ok">Copied!</span>
+          <button class="btn btn-sm" onclick="copyPost()">Copy post</button>
+        </div>
+      </div>
+
+      <textarea class="post-output" id="post-out" oninput="updateWC()"></textarea>
+
+      <hr class="divider">
+
+      <div class="section-label">Pre-publish checklist</div>
+      <div class="checklist" id="checklist"></div>
+
+      <hr class="divider">
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveToTracker()">Save to tracker</button>
+        <button class="btn" onclick="goBack(2)">Change hook</button>
+        <button class="btn" onclick="regenPost()">Rewrite</button>
+        <button class="btn" onclick="startOver()">Start over</button>
+      </div>
+
+      <div id="save-ok" style="display: none; margin-top: 10px; padding: 10px 14px; background: var(--green-bg); border: 1px solid var(--green-border); border-radius: var(--radius-sm); font-size: 13px; color: var(--green); font-weight: 700; font-family: 'Nunito', sans-serif;">
+        Post saved to tracker.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: POST TRACKER ── -->
+  <hr class="divider-thick">
+
+  <div class="tracker-header">
+    <div class="tracker-title">Post tracker</div>
+    <span style="font-size: 12px; color: var(--text-muted);">Data stored locally in this browser</span>
+  </div>
+
+  <!-- Summary bar -->
+  <div class="summary-bar" id="summary-bar">
+    <div class="summary-stat">
+      <div class="summary-stat-value" id="stat-total">0</div>
+      <div class="summary-stat-label">Total posts</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-stat-value" id="stat-avg-eng">--</div>
+      <div class="summary-stat-label">Avg engagement</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-stat-value" id="stat-best-eng">--</div>
+      <div class="summary-stat-label">Best engagement</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-stat-value" id="stat-best-save">--</div>
+      <div class="summary-stat-label">Highest save rate</div>
+    </div>
+    <div class="summary-stat">
+      <div class="summary-stat-value" id="stat-impressions">--</div>
+      <div class="summary-stat-label">Total impressions</div>
+    </div>
+  </div>
+
+  <!-- Posts table -->
+  <div class="card" style="padding: 0; overflow-x: auto;">
+    <table class="posts-table" id="posts-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Preview</th>
+          <th>Format</th>
+          <th>Impr.</th>
+          <th>Eng. rate</th>
+          <th>Saves</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="posts-tbody"></tbody>
+    </table>
+    <div class="empty-state" id="empty-state">
+      No posts yet. Write your first post above and save it to the tracker.
+    </div>
+  </div>
+
+</main>
+
+<script>
+const CHECKS_VOICE = [
+  "Canadian English throughout (favour, organisation, colour)",
+  "No em dashes anywhere in the post",
+  "No soft-skills framing. Communication is framed as a performance lever",
+  "Kenny is never positioned as a presentation coach or speaker trainer",
+  "No condescending language. No 'most people don't see this' or similar",
+  "No deficit framing. The reader is a high performer, not someone with a problem to fix",
+  "Feel-seen test: does the post describe the reader's situation with enough specificity they'd recognise their own experience?",
+  "Confidence and/or cost thread surfaces naturally in the post",
+  "Plain language. No word over two syllables where a simpler one works (except Kenny's signature terms)",
+  "Sounds like a real person thinking, not a content template",
+  "No hashtags or emojis",
+];
+
+const CHECKS_CRAFT = [
+  "T-shirt test: at least one line works as a standalone pull quote",
+  "Order of revelation: the opening programs the right frame for the main point",
+  "Steal thunder: if the advice is audience-specific, the wrong reader has been told neutrally",
+  "Anti-hype: no inflated language remains. Results are understated, insights carry their own weight",
+  "Bucket brigades: transition points have bridges where needed (one or two max, not overused)",
+  "Reframe: the post contains a clear moment where the reader's perspective shifts",
+];
+
+const CHECKS_STRUCTURE = [
+  "Hook stops the scroll. No cliches, no throat-clearing",
+  "150 to 250 words",
+  "Grounded in specifics, not abstractions",
+  "Line breaks for mobile readability. Punchiest lines get their own paragraph",
+  "Soft invitation CTA. Not pushy, not performative",
+];
+
+const CHECKS = [...CHECKS_VOICE, ...CHECKS_CRAFT, ...CHECKS_STRUCTURE];
+
+const SYSTEM = `You are ghostwriting LinkedIn posts for Kenny Solway, founder of Go To 11 Communication Training. Kenny is a Decision Acceleration Partner. He helps leaders prepare, structure, and deliver their thinking so decisions move faster. He is NOT a presentation coach, public speaking trainer, storytelling expert, motivational speaker, or slide designer. Never frame him this way, even subtly.
+
+## THE TWO THREADS: CONFIDENCE AND COST
+
+Almost every post should surface one or both of these. Not as slogans, but as the underlying current the reader feels. Use the actual words where they fit naturally.
+
+CONFIDENCE (the emotional thread): When you prepare with your audience in mind, your message becomes clear. When your message is clear, you deliver it with more confidence, and you instil confidence in your audience. When your audience feels confident, that builds trust. And when you have that trust, it speeds up their decisions in your favour. The chain: preparation > clarity > confidence > trust > approval. The t-shirt version: "Preparation. Clarity. Confidence. Trust. Approval."
+
+COST (the rational thread): Unclear communication has quantifiable costs. Wasted meetings, delayed decisions, stalled revenue, missed promotions. Framed positively: clear communication speeds up decisions, which speeds up revenue and accelerates careers. This is the business case.
+
+## NAMED CONCEPTS
+
+The No Decision Tax: When leaders communicate unclearly, decision-makers hesitate. That hesitation creates rework, extra meetings, lost time, and real business cost. Use when a post needs a punchy way to frame the cost of unclear communication. Works especially well in contrarian reframes.
+
+Communication is decision infrastructure: Go To 11's category-level positioning. Reframes communication from a soft skill into a business system. Use sparingly as a power line. Lands best as a closing insight or bold opening.
+
+## VOICE RULES
+
+1. Canadian English always. Behaviour, organisation, colour, favour, practise (verb), practice (noun).
+2. Professional but warm. Not stiff or corporate. Not sloppy. Think: a smart colleague you'd grab coffee with.
+3. Concise. Short sentences for emphasis. Longer ones for nuance. Cut filler ruthlessly.
+4. No em dashes. They are an AI tell. Use periods, commas, colons, or line breaks instead. If a sentence needs an em dash, restructure it.
+5. Lead with the problem. Start with what the reader is experiencing or what Kenny observed, not with credentials or self-promotion.
+6. Communication is a performance lever. Never frame it as a soft skill, a nice-to-have, or something you do after the "real work."
+7. Never condescending. No "most people don't see this," "what most people get wrong," "few people realise." Kenny's readers are smart, experienced leaders. Share observations, don't bestow wisdom.
+8. Empower, never diagnose. Kenny's audience are high performers. They are not broken. Never use deficit language ("your problem is," "what you're doing wrong," "you struggle with"). Frame it as an upgrade, a shift, or something they haven't had a reason to focus on until now.
+9. Make them feel seen. The reader should feel like Kenny is describing their exact situation. Write from inside the reader's experience: the meeting that went sideways even though the work was strong, the silence after a pitch that should have landed. Use specific, visceral details that make the reader recognise their own life.
+10. Reflective and narrative. LinkedIn Kenny thinks out loud, shares what he's noticed, connects it to something bigger. He's not lecturing.
+11. Grounded in specifics. Prefer concrete details over abstract claims. "A VP who walked out of that conversation thinking it went well, then got the email the next morning" beats "many leaders struggle with communication."
+12. Plain language, sophisticated thinking. If a simpler word says the same thing, use the simpler word. "Use" over "utilise." "Help" over "facilitate." "Start" over "initiate." Kenny's signature terms (velocity, alignment, structure, confidence, clarity, cost, preparation, framing, revenue) carry specific weight and should stay. The simplification applies to the connective tissue around them.
+13. Anti-hype by default. Understate results. Let insights carry their own weight. Strip inflated language on every pass.
+14. Thread confidence and cost. At least one of Kenny's twin motivators should surface naturally.
+15. Reframe the reader's perspective. Every post should contain a moment where the reader sees something familiar in a new way. When the frame shifts, their decisions shift.
+16. No hashtags unless Kenny specifically asks.
+17. No emojis unless Kenny specifically asks.
+18. Line breaks matter. Single-line paragraphs and white space for readability. LinkedIn is mobile-first. Give punchiest lines room to breathe.
+
+## WORDS AND PHRASES TO AVOID
+
+Em dashes. "Soft skills" (always reframe as performance lever). "Unlock," "leverage," "circle back," "deep dive," "unpack." "In today's world..." or "In my experience..." as openers. "Game-changer," "thought leader," "disruptive." "Here's the thing:" (overused LinkedIn cadence). "Let that sink in." / "Read that again." "This completely changed everything." "Most people don't see this," "most people get wrong," "few people realise," "what nobody tells you," "the secret is." "Your problem is," "what you're doing wrong," "you struggle with," "you need to fix." Any sentence that could appear on a motivational poster.
+
+## WORDS AND PHRASES THAT FEEL LIKE KENNY
+
+Confidence, cost, trust, velocity, preparation, clarity, structure, alignment, framing, revenue, career. "Your audience" / "their perspective." "Move faster" / "decide faster." Direct address: "you," "your team," "your next meeting."
+
+## SIX CRAFT PRINCIPLES
+
+Apply at least two or three visibly in every post. After drafting, check: can you point to the t-shirt line? Can you identify where order of revelation shaped the sequence? Did you use a bucket brigade? If not, revise.
+
+1. CATCHY PHRASING (T-SHIRT TEST): Every post needs at least one line that works as a standalone pull quote. Strip conjunctions. Use familiar sentence structures with one surprising word swap. Give the line its own paragraph with white space.
+
+2. ORDER OF REVELATION: The first thing you say programs how readers interpret everything after. Before writing, decide what the reader should believe or feel before they encounter the main argument. Then sequence accordingly.
+
+3. STEAL THUNDER (PREEMPTIVE DISQUALIFICATION): Telling the wrong reader to stop reading makes the right reader lean in. Deliver it neutrally: "If your team is still figuring out what meetings to have, this isn't the problem to solve yet." Not every post needs this, but when it fits, it sharpens the piece.
+
+4. ANTI-HYPE: Confidence doesn't need volume. "This completely changed everything" becomes "We stopped doing one thing. It made a noticeable difference." "Game-changing framework" becomes "A framework we use. It's not complicated."
+
+5. BUCKET BRIGADES: Short phrases (1 to 5 words) that carry readers across transitions. "Fact is." / "Here's why." / "This matters because." / "But here's the catch." Use sparingly, one or two per post. Do NOT use "Here's the thing."
+
+6. REFRAMING PERSPECTIVE: Every post needs a "reframe point" where the reader goes from their default way of thinking to Kenny's lens. Start where the reader is (their assumption), introduce the shift (the new lens), show what changes when they see it differently. Example: Default "I need to get better at presenting" becomes "Your presentation isn't the problem. The order you're revealing information is."
+
+## FORMATS
+
+1. OBSERVATION: Opens with what you saw or heard. Middle: why it's interesting or what it reveals. Ends with the implication for the reader. Craft lean: order of revelation + catchy phrasing.
+
+2. CONTRARIAN REFRAME: Hook is the bold claim or reversal. Middle: evidence, example, reasoning. Ends with the reframed truth. Craft lean: steal thunder + anti-hype.
+
+3. STORY TO LESSON: Hook drops you into the moment. Middle: what happened (3 to 5 sentences max for the story). Ends with what it taught you and why it matters to the reader. Craft lean: order of revelation + bucket brigades.
+
+4. FRAMEWORK: Hook is the problem the framework solves. Middle: framework in action (keep it accessible). Ends with how the reader can apply it. Craft lean: steal thunder + catchy phrasing.
+
+Kenny's key frameworks (use when relevant, don't force): The Velocity Ladder (stages of communication maturity), Three Pillars (People, Process, Presentation), Preparation-to-Decision Framework (preparation quality drives decision speed), Transformation Arc (the journey from where a client is to where they need to be).
+
+## STRUCTURE
+
+Hook > argument/story/observation > clear insight > soft CTA. Target 150 to 250 words. Line breaks for mobile readability.
+
+## CTA
+
+Soft invitation only. Never "like and share," never "follow me," never an exclamation mark. Examples: "If this resonates, I'd love to hear your version." / "What's the biggest preparation gap you've seen on your team?" / "I'm curious: when was the last time you walked into a meeting knowing exactly what you needed to walk out with?"
+
+## SIMPLIFICATION PASS
+
+After writing, do one focused pass: scan every verb, noun, and adjective. If there's a shorter, plainer word that means the same thing, swap it. Check sentence length: if any runs past 25 words, split or trim. Protect Kenny's signature terms. Read the t-shirt line out loud: if it uses any word over two syllables that isn't a Kenny signature term, simplify.`;
+
+const STORAGE_KEY = 'goto11_posts';
+const API_KEY_KEY = 'goto11_api_key';
+
+let state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '' };
+
+// ── API Key ──
+function getApiKey() { return localStorage.getItem(API_KEY_KEY) || ''; }
+
+function showApiKeyModal() {
+  document.getElementById('api-key-input').value = getApiKey();
+  document.getElementById('api-modal').classList.add('show');
+  document.getElementById('api-key-input').focus();
+}
+
+function closeApiKeyModal() {
+  document.getElementById('api-modal').classList.remove('show');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (key) {
+    localStorage.setItem(API_KEY_KEY, key);
+    updateApiKeyBtn();
+  }
+  closeApiKeyModal();
+}
+
+function clearApiKey() {
+  localStorage.removeItem(API_KEY_KEY);
+  document.getElementById('api-key-input').value = '';
+  updateApiKeyBtn();
+  closeApiKeyModal();
+}
+
+function updateApiKeyBtn() {
+  const btn = document.getElementById('api-key-btn');
+  if (getApiKey()) {
+    btn.textContent = 'API key connected';
+    btn.classList.add('connected');
+  } else {
+    btn.textContent = 'API key';
+    btn.classList.remove('connected');
+  }
+}
+
+// ── Post storage ──
+function loadPosts() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+
+function savePosts(posts) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+}
+
+// ── Format cards ──
+document.querySelectorAll('.format-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.format = card.dataset.format;
+  });
+});
+
+// ── Step navigation ──
+function setStep(n) {
+  [1, 2, 3].forEach(i => {
+    document.getElementById('panel-' + i).classList.toggle('active', i === n);
+    const circle = document.getElementById('circle-' + i);
+    const name = document.getElementById('name-' + i);
+    if (i < n) {
+      circle.className = 'step-circle done';
+      circle.textContent = '\u2713';
+    } else if (i === n) {
+      circle.className = 'step-circle active';
+      circle.textContent = i;
+    } else {
+      circle.className = 'step-circle';
+      circle.textContent = i;
+    }
+    name.className = 'step-name' + (i === n ? ' active' : '');
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goBack(n) { setStep(n); }
+
+function startOver() {
+  state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '' };
+  document.getElementById('seed').value = '';
+  document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector('[data-format="auto"]').classList.add('selected');
+  document.getElementById('save-ok').style.display = 'none';
+  setStep(1);
+}
+
+function showLoader(id, show) {
+  document.getElementById('loader-' + id).classList.toggle('show', show);
+}
+
+function showError(id, msg) {
+  const el = document.getElementById('error-' + id);
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function formatLabel() {
+  const map = { auto: 'Auto', observation: 'Observation', contrarian: 'Contrarian reframe', story: 'Story \u2192 Lesson', framework: 'Framework' };
+  return map[state.format] || state.format;
+}
+
+// ── API ──
+async function callClaude(prompt) {
+  const key = getApiKey();
+  if (!key) {
+    showApiKeyModal();
+    throw new Error('Enter your Anthropic API key to continue.');
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'API error');
+  return data.content.find(b => b.type === 'text')?.text || '';
+}
+
+// ── Step 1: Generate hooks ──
+async function generateHooks() {
+  state.seed = document.getElementById('seed').value.trim();
+  if (!state.seed) { showError(1, 'Add a seed idea first.'); return; }
+  showError(1, '');
+  document.getElementById('gen-hooks-btn').disabled = true;
+  showLoader(1, true);
+
+  const fi = state.format === 'auto' ? 'Pick whichever format best fits the idea.' : `Use the ${formatLabel()} format.`;
+  const prompt = `Kenny's seed idea:\n\n"${state.seed}"\n\n${fi}\n\nGenerate exactly 3 hooks (opening lines). Each hook is 1 to 2 short sentences max.\n\nHook quality criteria:\n- Creates tension, curiosity, or recognition ("I've been in that room")\n- Feels like a real person thinking out loud, not a content marketer optimising for clicks\n- Short. Usually one sentence. Sometimes two very short ones.\n- Never starts with "I'm excited to share...", "In today's fast-paced world...", or any LinkedIn cliche\n- Apply the t-shirt test: familiar syntax, one distinctive word, portable out of context, compressed\n- Apply order of revelation: the hook programs how readers interpret everything after it. Ask: what should the reader assume is true before they hit the main point?\n\nLabel them Hook A, Hook B, Hook C. No extra explanation. No preamble. Just the three hooks.`;
+
+  try {
+    const text = await callClaude(prompt);
+    state.hooks = parseHooks(text);
+    state.selected = null;
+    renderHooks();
+    document.getElementById('format-badge').textContent = formatLabel();
+    setStep(2);
+  } catch (e) {
+    showError(1, 'Something went wrong: ' + e.message);
+  } finally {
+    showLoader(1, false);
+    document.getElementById('gen-hooks-btn').disabled = false;
+  }
+}
+
+function parseHooks(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const hooks = [];
+  let cur = '';
+  for (const line of lines) {
+    if (/^hook\s*[abc]/i.test(line)) {
+      if (cur) hooks.push(cur.trim());
+      cur = line.replace(/^hook\s*[abc][:\.\s]*/i, '').trim();
+    } else if (cur) {
+      cur += ' ' + line;
+    }
+  }
+  if (cur) hooks.push(cur.trim());
+  while (hooks.length < 3) hooks.push('Could not parse hook. Try regenerating.');
+  return hooks.slice(0, 3);
+}
+
+function renderHooks() {
+  const labels = ['Hook A', 'Hook B', 'Hook C'];
+  const container = document.getElementById('hooks-container');
+  container.innerHTML = '';
+  state.hooks.forEach((hook, i) => {
+    const div = document.createElement('div');
+    div.className = 'hook-card';
+    div.innerHTML = `<div class="hook-tag">${labels[i]}</div><div class="hook-text">${escHtml(hook)}</div>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.hook-card').forEach(c => c.classList.remove('selected'));
+      div.classList.add('selected');
+      state.selected = i;
+      state.hookLabel = labels[i];
+      document.getElementById('write-btn').disabled = false;
+    });
+    container.appendChild(div);
+  });
+}
+
+// ── Step 2: Regenerate hooks ──
+async function regenHooks() {
+  document.getElementById('write-btn').disabled = true;
+  showError(2, '');
+  showLoader(2, true);
+  const fi = state.format === 'auto' ? 'Pick whichever format best fits the idea.' : `Use the ${formatLabel()} format.`;
+  const prompt = `Kenny's seed idea:\n\n"${state.seed}"\n\n${fi}\n\nGenerate 3 fresh hooks, completely different from any previous attempt. Each hook is 1 to 2 short sentences max.\n\nHook quality criteria:\n- Creates tension, curiosity, or recognition\n- Feels like a real person thinking out loud\n- Apply the t-shirt test: familiar syntax, one distinctive word, portable, compressed\n- Apply order of revelation: program the right frame before the main point\n- No LinkedIn cliches, no throat-clearing\n\nLabel them Hook A, Hook B, Hook C. No preamble. Just the three hooks.`;
+  try {
+    const text = await callClaude(prompt);
+    state.hooks = parseHooks(text);
+    state.selected = null;
+    renderHooks();
+  } catch (e) {
+    showError(2, 'Something went wrong: ' + e.message);
+  } finally {
+    showLoader(2, false);
+  }
+}
+
+// ── Step 2 → 3: Generate post ──
+async function generatePost() {
+  if (state.selected === null) return;
+  showError(2, '');
+  document.getElementById('write-btn').disabled = true;
+  showLoader(2, true);
+
+  const hook = state.hooks[state.selected];
+  const fi = state.format === 'auto' ? 'Choose the best format for this idea.' : `Use the ${formatLabel()} format.`;
+  const prompt = `Kenny's seed idea:\n"${state.seed}"\n\nChosen hook:\n"${hook}"\n\n${fi}\n\nWrite the complete LinkedIn post following this process:\n\n1. WRITE: Open with the chosen hook exactly as written. Build the argument, story, or observation. Land on a clear insight. End with a soft invitation CTA (never "like and share," never "follow me," never an exclamation mark). Target 150 to 250 words. Line breaks for mobile readability. No hashtags. No emojis. Canadian English. No em dashes.\n\n2. APPLY CRAFT PRINCIPLES: Ensure at least 2 to 3 are visibly present:\n- T-shirt test: at least one line works as a standalone pull quote (give it its own paragraph)\n- Order of revelation: the opening programs the right frame\n- Steal thunder: if advice is audience-specific, neutrally disqualify the wrong reader\n- Anti-hype: understate results, let insights carry weight\n- Bucket brigades: 1 to 2 bridge phrases at transition points (never "Here's the thing")\n- Reframe: include a clear moment where the reader's perspective shifts\n\n3. SIMPLIFICATION PASS: Scan every verb, noun, adjective. If a shorter, plainer word means the same thing, swap it. Protect Kenny's signature terms (velocity, alignment, structure, confidence, clarity, cost, preparation, framing, revenue). If any sentence runs past 25 words, split or trim.\n\nReturn only the post text. No preamble, no labels, no commentary.`;
+
+  try {
+    const text = await callClaude(prompt);
+    state.post = text.trim();
+    document.getElementById('post-out').value = state.post;
+    document.getElementById('format-badge-3').textContent = formatLabel();
+    document.getElementById('save-ok').style.display = 'none';
+    renderChecklist();
+    updateWC();
+    setStep(3);
+  } catch (e) {
+    showError(2, 'Something went wrong: ' + e.message);
+  } finally {
+    showLoader(2, false);
+    document.getElementById('write-btn').disabled = false;
+  }
+}
+
+// ── Step 3: Rewrite ──
+async function regenPost() {
+  if (state.selected === null) return;
+  setStep(2);
+  showLoader(2, true);
+  const hook = state.hooks[state.selected];
+  const prompt = `Kenny's seed idea:\n"${state.seed}"\n\nChosen hook:\n"${hook}"\n\nWrite a completely fresh version of the LinkedIn post. Same hook, but different angle, different argument, different examples. Do not repeat phrases or structure from any previous version.\n\nFollow the same process:\n1. WRITE: Open with the hook exactly as written. Build a different argument, story, or observation. Land on a different insight. End with a soft invitation CTA. Target 150 to 250 words. Line breaks for mobile. No hashtags. No emojis. Canadian English. No em dashes.\n2. APPLY CRAFT PRINCIPLES: At least 2 to 3 visibly present (t-shirt test, order of revelation, steal thunder, anti-hype, bucket brigades, reframe).\n3. SIMPLIFICATION PASS: Swap every complex word for a simpler one. Protect Kenny's signature terms.\n\nReturn only the post text. No preamble, no labels.`;
+  try {
+    const text = await callClaude(prompt);
+    state.post = text.trim();
+    document.getElementById('post-out').value = state.post;
+    updateWC();
+    setStep(3);
+  } catch (e) {
+    showError(2, 'Something went wrong: ' + e.message);
+  } finally {
+    showLoader(2, false);
+  }
+}
+
+// ── Checklist ──
+function renderChecklist() {
+  const container = document.getElementById('checklist');
+  container.innerHTML = '';
+
+  const sections = [
+    { label: 'Voice and positioning', items: CHECKS_VOICE },
+    { label: 'Craft principles', items: CHECKS_CRAFT },
+    { label: 'Structure', items: CHECKS_STRUCTURE },
+  ];
+
+  let idx = 0;
+  sections.forEach(section => {
+    const heading = document.createElement('div');
+    heading.className = 'section-label';
+    heading.style.marginTop = idx === 0 ? '0' : '14px';
+    heading.textContent = section.label;
+    container.appendChild(heading);
+
+    section.items.forEach(item => {
+      const label = document.createElement('label');
+      label.className = 'check-item';
+      label.innerHTML = `<input type="checkbox" id="chk-${idx}"><span>${item}</span>`;
+      label.querySelector('input').addEventListener('change', function () {
+        label.classList.toggle('done', this.checked);
+      });
+      container.appendChild(label);
+      idx++;
+    });
+  });
+}
+
+// ── Word count ──
+function updateWC() {
+  const text = document.getElementById('post-out').value.trim();
+  const count = text ? text.split(/\s+/).length : 0;
+  const el = document.getElementById('wc');
+  el.textContent = count + ' words';
+  el.className = 'wc' + (count >= 150 && count <= 250 ? ' good' : count > 250 ? ' over' : '');
+}
+
+// ── Copy ──
+function copyPost() {
+  const text = document.getElementById('post-out').value;
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById('copy-ok');
+    el.style.display = 'inline';
+    setTimeout(() => { el.style.display = 'none'; }, 2000);
+  });
+}
+
+// ── Save to tracker ──
+function saveToTracker() {
+  const postText = document.getElementById('post-out').value.trim();
+  if (!postText) return;
+
+  const posts = loadPosts();
+  const now = new Date();
+  const post = {
+    id: now.getTime().toString(),
+    date: now.toISOString().split('T')[0],
+    seed: state.seed,
+    hook: state.hooks[state.selected] || '',
+    hookLabel: state.hookLabel || '',
+    format: state.format,
+    post: postText,
+    metrics: {
+      impressions: null,
+      reactions: null,
+      comments: null,
+      shares: null,
+      saves: null,
+      reposts: null,
+      clicks: null,
+      followsGained: null,
+      profileViews: null
+    }
+  };
+
+  posts.unshift(post);
+  savePosts(posts);
+  renderTracker();
+
+  const ok = document.getElementById('save-ok');
+  ok.style.display = 'block';
+  setTimeout(() => { ok.style.display = 'none'; }, 3000);
+}
+
+// ── Calculated rates ──
+function calcRate(num, denom) {
+  if (num == null || denom == null || denom === 0) return null;
+  return (num / denom * 100);
+}
+
+function engagementRate(m) {
+  if (!m.impressions) return null;
+  let sum = 0;
+  let any = false;
+  ['reactions', 'comments', 'shares', 'saves'].forEach(k => {
+    if (m[k] != null) { sum += m[k]; any = true; }
+  });
+  return any ? (sum / m.impressions * 100) : null;
+}
+
+function saveRate(m) { return calcRate(m.saves, m.impressions); }
+function commentRate(m) { return calcRate(m.comments, m.impressions); }
+function shareRate(m) { return calcRate(m.shares, m.impressions); }
+function clickRate(m) { return calcRate(m.clicks, m.impressions); }
+
+function fmtRate(val) {
+  if (val == null) return '--';
+  return val.toFixed(2) + '%';
+}
+
+function fmtNum(val) {
+  if (val == null) return '--';
+  return val.toLocaleString();
+}
+
+// ── Render tracker ──
+let expandedId = null;
+
+function renderTracker() {
+  const posts = loadPosts();
+  const tbody = document.getElementById('posts-tbody');
+  const empty = document.getElementById('empty-state');
+
+  // Summary stats
+  document.getElementById('stat-total').textContent = posts.length;
+
+  const engRates = posts.map(p => engagementRate(p.metrics)).filter(v => v != null);
+  document.getElementById('stat-avg-eng').textContent = engRates.length ? (engRates.reduce((a,b) => a+b, 0) / engRates.length).toFixed(2) + '%' : '--';
+  document.getElementById('stat-best-eng').textContent = engRates.length ? Math.max(...engRates).toFixed(2) + '%' : '--';
+
+  const saveRates = posts.map(p => saveRate(p.metrics)).filter(v => v != null);
+  document.getElementById('stat-best-save').textContent = saveRates.length ? Math.max(...saveRates).toFixed(2) + '%' : '--';
+
+  const totalImpr = posts.reduce((sum, p) => sum + (p.metrics.impressions || 0), 0);
+  document.getElementById('stat-impressions').textContent = totalImpr > 0 ? totalImpr.toLocaleString() : '--';
+
+  // Table
+  if (posts.length === 0) {
+    empty.style.display = 'block';
+    tbody.innerHTML = '';
+    return;
+  }
+
+  empty.style.display = 'none';
+  tbody.innerHTML = '';
+
+  const formatMap = { auto: 'Auto', observation: 'Observation', contrarian: 'Contrarian', story: 'Story', framework: 'Framework' };
+
+  posts.forEach(p => {
+    const eng = engagementRate(p.metrics);
+    const sv = saveRate(p.metrics);
+
+    const tr = document.createElement('tr');
+    tr.className = 'clickable-row';
+    tr.innerHTML = `
+      <td style="white-space: nowrap;">${p.date}</td>
+      <td><div class="post-preview">${escHtml(p.post.split('\n')[0])}</div></td>
+      <td>${formatMap[p.format] || p.format}</td>
+      <td>${fmtNum(p.metrics.impressions)}</td>
+      <td>
+        ${fmtRate(eng)}
+        ${eng != null && eng > 7 ? ' <span class="flag-eng">High</span>' : ''}
+      </td>
+      <td>
+        ${fmtNum(p.metrics.saves)}
+        ${sv != null && sv > 1 ? ' <span class="flag-save">Top</span>' : ''}
+      </td>
+      <td style="font-size: 16px; color: var(--text-muted);">${expandedId === p.id ? '\u25B2' : '\u25BC'}</td>
+    `;
+    tr.addEventListener('click', () => {
+      expandedId = expandedId === p.id ? null : p.id;
+      renderTracker();
+    });
+    tbody.appendChild(tr);
+
+    // Expanded row
+    if (expandedId === p.id) {
+      const expTr = document.createElement('tr');
+      expTr.className = 'expanded-row';
+      const td = document.createElement('td');
+      td.colSpan = 7;
+
+      const m = p.metrics;
+      td.innerHTML = `
+        <div class="expanded-content">
+          <div class="expanded-section">
+            <div class="expanded-label">Full post</div>
+            <div class="expanded-text">${escHtml(p.post)}</div>
+          </div>
+          <div class="expanded-section">
+            <div class="expanded-label">Seed idea</div>
+            <div class="expanded-text">${escHtml(p.seed)}</div>
+          </div>
+          <div class="expanded-section">
+            <div class="expanded-label">Hook used (${escHtml(p.hookLabel)})</div>
+            <div class="expanded-text">${escHtml(p.hook)}</div>
+          </div>
+          <div class="expanded-section">
+            <div class="expanded-label">Raw metrics</div>
+            <div class="metrics-grid">
+              <div class="metric-item"><div class="metric-item-label">Impressions</div><div class="metric-item-value">${fmtNum(m.impressions)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Reactions</div><div class="metric-item-value">${fmtNum(m.reactions)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Comments</div><div class="metric-item-value">${fmtNum(m.comments)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Shares</div><div class="metric-item-value">${fmtNum(m.shares)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Saves</div><div class="metric-item-value">${fmtNum(m.saves)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Reposts</div><div class="metric-item-value">${fmtNum(m.reposts)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Clicks</div><div class="metric-item-value">${fmtNum(m.clicks)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Follows gained</div><div class="metric-item-value">${fmtNum(m.followsGained)}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Profile views</div><div class="metric-item-value">${fmtNum(m.profileViews)}</div></div>
+            </div>
+          </div>
+          <div class="expanded-section">
+            <div class="expanded-label">Calculated rates</div>
+            <div class="metrics-grid">
+              <div class="metric-item"><div class="metric-item-label">Engagement rate</div><div class="metric-item-value">${fmtRate(engagementRate(m))}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Comment rate</div><div class="metric-item-value">${fmtRate(commentRate(m))}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Share rate</div><div class="metric-item-value">${fmtRate(shareRate(m))}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Save rate</div><div class="metric-item-value">${fmtRate(saveRate(m))}</div></div>
+              <div class="metric-item"><div class="metric-item-label">Click rate</div><div class="metric-item-value">${fmtRate(clickRate(m))}</div></div>
+            </div>
+          </div>
+          <div class="expanded-section">
+            <div class="expanded-label">Enter metrics</div>
+            <div class="metric-form" id="metric-form-${p.id}">
+              <div class="metric-form-grid">
+                <div class="metric-form-field"><label>Impressions</label><input type="number" data-field="impressions" value="${m.impressions ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Reactions</label><input type="number" data-field="reactions" value="${m.reactions ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Comments</label><input type="number" data-field="comments" value="${m.comments ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Shares</label><input type="number" data-field="shares" value="${m.shares ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Saves</label><input type="number" data-field="saves" value="${m.saves ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Reposts</label><input type="number" data-field="reposts" value="${m.reposts ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Clicks</label><input type="number" data-field="clicks" value="${m.clicks ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Follows gained</label><input type="number" data-field="followsGained" value="${m.followsGained ?? ''}" min="0"></div>
+                <div class="metric-form-field"><label>Profile views</label><input type="number" data-field="profileViews" value="${m.profileViews ?? ''}" min="0"></div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm" onclick="saveMetrics('${p.id}')">Save metrics</button>
+                <button class="btn btn-sm" onclick="deletePost('${p.id}')" style="color: var(--red);">Delete post</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      expTr.appendChild(td);
+      tbody.appendChild(expTr);
+    }
+  });
+}
+
+function saveMetrics(postId) {
+  const posts = loadPosts();
+  const post = posts.find(p => p.id === postId);
+  if (!post) return;
+
+  const form = document.getElementById('metric-form-' + postId);
+  form.querySelectorAll('input[data-field]').forEach(input => {
+    const field = input.dataset.field;
+    const val = input.value.trim();
+    post.metrics[field] = val === '' ? null : parseInt(val, 10);
+  });
+
+  savePosts(posts);
+  renderTracker();
+}
+
+function deletePost(postId) {
+  if (!confirm('Delete this post from the tracker?')) return;
+  let posts = loadPosts();
+  posts = posts.filter(p => p.id !== postId);
+  savePosts(posts);
+  expandedId = null;
+  renderTracker();
+}
+
+// ── Utility ──
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Init ──
+updateApiKeyBtn();
+renderTracker();
+</script>
+</body>
+</html>
