@@ -178,8 +178,36 @@ Exclude null metrics from calculations — missing data should not zero out a ra
 - No deficit framing — readers are high performers, not people with problems
 - Fast and frictionless — every step should feel immediate
 
+## Notion integration
+
+The Post Studio saves posts to localStorage. To sync to Notion:
+- Kenny says "push my latest post to Notion" (or "sync all unpushed posts")
+- Claude Code reads from the live site's localStorage or from Kenny's description
+- Claude Code creates pages in the Content Calendar database:
+  - **Database URL:** https://www.notion.so/goto11ca/1c8674c26436809aa314e54f9fb86647
+  - **Data source:** collection://1c8674c2-6436-81af-b6dc-000b6625cbd3
+
+### Field mapping (Post Studio → Notion)
+
+| Post Studio | Notion property | Notes |
+|---|---|---|
+| post (first line) | Title | First line of the post |
+| status | Status | draft → Not started, published → Published |
+| publishDate | Publication Date | date:Publication Date:start |
+| format | Content Type | observation → Perspective, contrarian → Reframe, story → Client Story, framework → Framework Deep-Dive |
+| pillar | Topic/Subject | JSON array |
+| ctaStyle | CTA Type | question → Reply trigger, invitation → Resonating close, observation → No CTA |
+| linkedinUrl | Link to Asset | |
+| post (full text) | Page content body | |
+| seed | Notes | |
+| impressions | Impressions | |
+| comments | Comments | |
+| "Claude" | Prompt tool | Always Claude |
+| "LinkedIn" | Platform(s) | Always LinkedIn |
+| "Text" | Medium | Default to Text |
+
 ## Planned future features (do not build yet)
 
-- Save post directly to Notion content calendar
 - Survivor episode mode (weekly communication lesson posts)
 - Post history analysis / pattern spotting across top performers
+- Backend API to enable direct Notion sync from the browser

@@ -1053,6 +1053,59 @@
         </div>
       </div>
 
+      <hr class="divider">
+
+      <div class="section-label">Options</div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+        <div class="field" style="margin-bottom: 0;">
+          <label class="field-label">Audience</label>
+          <select id="opt-audience" class="filter-select" style="width: 100%; padding: 10px 12px; font-size: 14px;">
+            <option value="">Auto (senior leaders)</option>
+            <option value="C-suite executives">C-suite executives</option>
+            <option value="VP and Director level">VP and Director level</option>
+            <option value="Sales leaders">Sales leaders</option>
+            <option value="Founders">Founders</option>
+            <option value="Mid-level managers">Mid-level managers</option>
+            <option value="Consultants">Consultants</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+          <label class="field-label">Post length</label>
+          <select id="opt-length" class="filter-select" style="width: 100%; padding: 10px 12px; font-size: 14px;">
+            <option value="standard">Standard (150 to 250 words)</option>
+            <option value="short">Short (under 150 words)</option>
+            <option value="long">Long (250 to 350 words)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+        <div class="field" style="margin-bottom: 0;">
+          <label class="field-label">CTA style</label>
+          <select id="opt-cta" class="filter-select" style="width: 100%; padding: 10px 12px; font-size: 14px;">
+            <option value="">Auto</option>
+            <option value="question">Question</option>
+            <option value="invitation">Invitation</option>
+            <option value="observation">Observation</option>
+            <option value="none">No CTA</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+          <label class="field-label">Content pillar</label>
+          <select id="opt-pillar" class="filter-select" style="width: 100%; padding: 10px 12px; font-size: 14px;">
+            <option value="">None</option>
+            <option value="Confidence">Confidence</option>
+            <option value="Clarity">Clarity</option>
+            <option value="Delivery">Delivery</option>
+            <option value="Language">Language</option>
+            <option value="Relationships">Relationships</option>
+            <option value="Neuroscience">Neuroscience</option>
+            <option value="Present With Impact">Present With Impact</option>
+          </select>
+        </div>
+      </div>
+
       <div class="btn-row">
         <button class="btn btn-primary" id="gen-hooks-btn" onclick="generateHooks()">Generate hooks →</button>
       </div>
@@ -1104,6 +1157,19 @@
       </div>
 
       <textarea class="post-output" id="post-out" oninput="updateWC()"></textarea>
+
+      <!-- Revision prompt -->
+      <div style="margin-top: 12px; display: flex; gap: 8px; align-items: flex-end;">
+        <div style="flex: 1;">
+          <textarea id="revision-prompt" rows="2" placeholder="Revise: make it shorter, swap the CTA to a question, strengthen the hook..." style="font-size: 13px; min-height: 44px; resize: none;"></textarea>
+        </div>
+        <button class="btn btn-primary btn-sm" id="revise-btn" onclick="revisePost()" style="flex-shrink: 0; height: 44px;">Revise</button>
+      </div>
+      <div class="loader" id="loader-3">
+        <div class="spinner"></div>
+        <span>Revising...</span>
+      </div>
+      <div class="error" id="error-3"></div>
 
       <hr class="divider">
 
@@ -1390,7 +1456,7 @@ After writing, do one focused pass: scan every verb, noun, and adjective. If the
 const STORAGE_KEY = 'goto11_posts';
 const API_KEY_KEY = 'goto11_api_key';
 
-let state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '' };
+let state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '', audience: '', length: 'standard', cta: '', pillar: '' };
 
 // ── API Key ──
 function getApiKey() { return localStorage.getItem(API_KEY_KEY) || ''; }
@@ -1475,12 +1541,38 @@ function setStep(n) {
 function goBack(n) { setStep(n); }
 
 function startOver() {
-  state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '' };
+  state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '', audience: '', length: 'standard', cta: '', pillar: '' };
   document.getElementById('seed').value = '';
   document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
   document.querySelector('[data-format="auto"]').classList.add('selected');
+  document.getElementById('opt-audience').value = '';
+  document.getElementById('opt-length').value = 'standard';
+  document.getElementById('opt-cta').value = '';
+  document.getElementById('opt-pillar').value = '';
+  document.getElementById('revision-prompt').value = '';
   document.getElementById('save-ok').style.display = 'none';
   setStep(1);
+}
+
+function readOptions() {
+  state.audience = document.getElementById('opt-audience').value;
+  state.length = document.getElementById('opt-length').value;
+  state.cta = document.getElementById('opt-cta').value;
+  state.pillar = document.getElementById('opt-pillar').value;
+}
+
+function buildOptionLines() {
+  const lines = [];
+  if (state.audience) lines.push(`Target audience: ${state.audience}.`);
+  if (state.length === 'short') lines.push('Target under 150 words. Keep it tight.');
+  else if (state.length === 'long') lines.push('Target 250 to 350 words. More room to develop the argument.');
+  else lines.push('Target 150 to 250 words.');
+  if (state.cta === 'question') lines.push('End with a question as the CTA.');
+  else if (state.cta === 'invitation') lines.push('End with a soft invitation as the CTA.');
+  else if (state.cta === 'observation') lines.push('End with an observation, no direct CTA.');
+  else if (state.cta === 'none') lines.push('No CTA at the end.');
+  if (state.pillar) lines.push(`Content pillar: ${state.pillar}. Tie the post back to this theme.`);
+  return lines.join('\n');
 }
 
 function showLoader(id, show) {
@@ -1489,6 +1581,7 @@ function showLoader(id, show) {
 
 function showError(id, msg) {
   const el = document.getElementById('error-' + id);
+  if (!el) return;
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
 }
@@ -1530,12 +1623,14 @@ async function callClaude(prompt) {
 async function generateHooks() {
   state.seed = document.getElementById('seed').value.trim();
   if (!state.seed) { showError(1, 'Add a seed idea first.'); return; }
+  readOptions();
   showError(1, '');
   document.getElementById('gen-hooks-btn').disabled = true;
   showLoader(1, true);
 
   const fi = state.format === 'auto' ? 'Pick whichever format best fits the idea.' : `Use the ${formatLabel()} format.`;
-  const prompt = `Kenny's seed idea:\n\n"${state.seed}"\n\n${fi}\n\nGenerate exactly 3 hooks (opening lines). Each hook is 1 to 2 short sentences max.\n\nHook quality criteria:\n- Creates tension, curiosity, or recognition ("I've been in that room")\n- Feels like a real person thinking out loud, not a content marketer optimising for clicks\n- Short. Usually one sentence. Sometimes two very short ones.\n- Never starts with "I'm excited to share...", "In today's fast-paced world...", or any LinkedIn cliche\n- Apply the t-shirt test: familiar syntax, one distinctive word, portable out of context, compressed\n- Apply order of revelation: the hook programs how readers interpret everything after it. Ask: what should the reader assume is true before they hit the main point?\n\nLabel them Hook A, Hook B, Hook C. No extra explanation. No preamble. Just the three hooks.`;
+  const opts = buildOptionLines();
+  const prompt = `Kenny's seed idea:\n\n"${state.seed}"\n\n${fi}\n${opts}\n\nGenerate exactly 3 hooks (opening lines). Each hook is 1 to 2 short sentences max.\n\nHook quality criteria:\n- Creates tension, curiosity, or recognition ("I've been in that room")\n- Feels like a real person thinking out loud, not a content marketer optimising for clicks\n- Short. Usually one sentence. Sometimes two very short ones.\n- Never starts with "I'm excited to share...", "In today's fast-paced world...", or any LinkedIn cliche\n- Apply the t-shirt test: familiar syntax, one distinctive word, portable out of context, compressed\n- Apply order of revelation: the hook programs how readers interpret everything after it. Ask: what should the reader assume is true before they hit the main point?\n\nLabel them Hook A, Hook B, Hook C. No extra explanation. No preamble. Just the three hooks.`;
 
   try {
     const text = await callClaude(prompt);
@@ -1616,7 +1711,8 @@ async function generatePost() {
 
   const hook = state.hooks[state.selected];
   const fi = state.format === 'auto' ? 'Choose the best format for this idea.' : `Use the ${formatLabel()} format.`;
-  const prompt = `Kenny's seed idea:\n"${state.seed}"\n\nChosen hook:\n"${hook}"\n\n${fi}\n\nWrite the complete LinkedIn post following this process:\n\n1. WRITE: Open with the chosen hook exactly as written. Build the argument, story, or observation. Land on a clear insight. End with a soft invitation CTA (never "like and share," never "follow me," never an exclamation mark). Target 150 to 250 words. Line breaks for mobile readability. No hashtags. No emojis. Canadian English. No em dashes.\n\n2. APPLY CRAFT PRINCIPLES: Ensure at least 2 to 3 are visibly present:\n- T-shirt test: at least one line works as a standalone pull quote (give it its own paragraph)\n- Order of revelation: the opening programs the right frame\n- Steal thunder: if advice is audience-specific, neutrally disqualify the wrong reader\n- Anti-hype: understate results, let insights carry weight\n- Bucket brigades: 1 to 2 bridge phrases at transition points (never "Here's the thing")\n- Reframe: include a clear moment where the reader's perspective shifts\n\n3. SIMPLIFICATION PASS: Scan every verb, noun, adjective. If a shorter, plainer word means the same thing, swap it. Protect Kenny's signature terms (velocity, alignment, structure, confidence, clarity, cost, preparation, framing, revenue). If any sentence runs past 25 words, split or trim.\n\nReturn only the post text. No preamble, no labels, no commentary.`;
+  const opts = buildOptionLines();
+  const prompt = `Kenny's seed idea:\n"${state.seed}"\n\nChosen hook:\n"${hook}"\n\n${fi}\n${opts}\n\nWrite the complete LinkedIn post following this process:\n\n1. WRITE: Open with the chosen hook exactly as written. Build the argument, story, or observation. Land on a clear insight. Line breaks for mobile readability. No hashtags. No emojis. Canadian English. No em dashes.\n\n2. APPLY CRAFT PRINCIPLES: Ensure at least 2 to 3 are visibly present:\n- T-shirt test: at least one line works as a standalone pull quote (give it its own paragraph)\n- Order of revelation: the opening programs the right frame\n- Steal thunder: if advice is audience-specific, neutrally disqualify the wrong reader\n- Anti-hype: understate results, let insights carry weight\n- Bucket brigades: 1 to 2 bridge phrases at transition points (never "Here's the thing")\n- Reframe: include a clear moment where the reader's perspective shifts\n\n3. SIMPLIFICATION PASS: Scan every verb, noun, adjective. If a shorter, plainer word means the same thing, swap it. Protect Kenny's signature terms (velocity, alignment, structure, confidence, clarity, cost, preparation, framing, revenue). If any sentence runs past 25 words, split or trim.\n\nReturn only the post text. No preamble, no labels, no commentary.`;
 
   try {
     const text = await callClaude(prompt);
@@ -1652,6 +1748,32 @@ async function regenPost() {
     showError(2, 'Something went wrong: ' + e.message);
   } finally {
     showLoader(2, false);
+  }
+}
+
+// ── Revise post ──
+async function revisePost() {
+  const currentPost = document.getElementById('post-out').value.trim();
+  const instruction = document.getElementById('revision-prompt').value.trim();
+  if (!currentPost || !instruction) return;
+
+  showError(3, '');
+  document.getElementById('revise-btn').disabled = true;
+  document.getElementById('loader-3').classList.add('show');
+
+  const opts = buildOptionLines();
+  const prompt = `Here is the current LinkedIn post:\n\n"${currentPost}"\n\nKenny's revision instruction: "${instruction}"\n\n${opts}\n\nApply the revision instruction to the post. Keep everything else that's working. Maintain Kenny's voice rules. Return only the revised post text. No preamble, no labels.`;
+
+  try {
+    const text = await callClaude(prompt);
+    document.getElementById('post-out').value = text.trim();
+    document.getElementById('revision-prompt').value = '';
+    updateWC();
+  } catch (e) {
+    showError(3, 'Something went wrong: ' + e.message);
+  } finally {
+    document.getElementById('loader-3').classList.remove('show');
+    document.getElementById('revise-btn').disabled = false;
   }
 }
 
@@ -1747,6 +1869,10 @@ function confirmSave() {
     hook: state.hooks[state.selected] || '',
     hookLabel: state.hookLabel || '',
     format: state.format,
+    audience: state.audience,
+    length: state.length,
+    ctaStyle: state.cta,
+    pillar: state.pillar,
     post: postText,
     status: saveStatus,
     publishDate: document.getElementById('save-date').value || null,
