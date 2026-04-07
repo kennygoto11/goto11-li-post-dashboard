@@ -1241,6 +1241,10 @@
         <label class="field-label">Topic tag</label>
         <input type="text" id="save-topic" placeholder="e.g. preparation, framing, velocity" style="font-size: 14px;">
       </div>
+      <div class="field" style="margin-bottom: 10px;" id="save-url-wrap">
+        <label class="field-label">LinkedIn URL <span style="font-weight: 400; color: var(--text-muted); font-size: 12px;">(paste after publishing)</span></label>
+        <input type="text" id="save-url" placeholder="https://www.linkedin.com/feed/update/urn:li:activity:..." style="font-size: 13px;">
+      </div>
       <label style="display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer;">
         <input type="checkbox" id="save-notion" checked style="accent-color: var(--purple); width: 16px; height: 16px;">
         <span style="font-size: 13px; color: var(--text-secondary);">Also save to Notion Content Calendar</span>
@@ -1973,6 +1977,9 @@ function showSaveModal(status) {
   document.getElementById('save-date-label').textContent = status === 'draft' ? 'Planned publish date' : 'Publish date';
   document.getElementById('save-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('save-topic').value = '';
+  document.getElementById('save-url').value = '';
+  // Hide URL field for drafts since they aren't published yet
+  document.getElementById('save-url-wrap').style.display = status === 'draft' ? 'none' : '';
   document.getElementById('save-modal').classList.add('show');
 }
 
@@ -2013,6 +2020,8 @@ async function confirmSave() {
     post.publishDate = document.getElementById('save-date').value || post.publishDate;
     post.thread = saveThread || post.thread;
     post.topic = document.getElementById('save-topic').value.trim() || post.topic;
+    const urlInput = document.getElementById('save-url').value.trim();
+    if (urlInput) post.linkedinUrl = urlInput;
     state.editingId = null;
   } else {
     // Create new post
@@ -2030,7 +2039,7 @@ async function confirmSave() {
       post: postText,
       status: saveStatus,
       publishDate: document.getElementById('save-date').value || null,
-      linkedinUrl: null,
+      linkedinUrl: document.getElementById('save-url').value.trim() || null,
       thread: saveThread,
       topic: document.getElementById('save-topic').value.trim() || '',
       ctaType: null,
