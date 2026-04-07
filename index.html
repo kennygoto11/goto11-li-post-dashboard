@@ -1261,7 +1261,30 @@
     <div style="display: flex; gap: 8px; align-items: center;">
       <input type="file" id="csv-input" accept=".csv,.xlsx" style="display: none;" onchange="handleCsvFile(event)">
       <button class="btn btn-sm" onclick="document.getElementById('csv-input').click()">Import LinkedIn CSV</button>
+      <button class="btn btn-sm" onclick="document.getElementById('help-modal').classList.add('show')" title="How to import" style="padding: 6px 10px;">?</button>
       <span style="font-size: 12px; color: var(--text-muted);">Data stored locally</span>
+    </div>
+  </div>
+
+  <!-- Help modal -->
+  <div class="modal-overlay" id="help-modal">
+    <div class="modal" style="max-width: 540px;">
+      <h3>How to import LinkedIn metrics</h3>
+      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+        <strong style="color: var(--text-primary);">Step 1:</strong> Go to <a href="https://www.linkedin.com/analytics/creator/content/" target="_blank" style="color: var(--purple);">LinkedIn Analytics</a> (Me → Posts &amp; Activity → Analytics).<br><br>
+        <strong style="color: var(--text-primary);">Step 2:</strong> Click <strong>Export</strong> in the top right and pick your date range.<br><br>
+        <strong style="color: var(--text-primary);">Step 3:</strong> Click <strong>Import LinkedIn CSV</strong> above and select the downloaded file.<br><br>
+        <strong style="color: var(--text-primary);">Step 4:</strong> Review the matched and unmatched rows in the modal, then click <strong>Apply changes</strong>.
+      </p>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 12px; padding: 10px; background: var(--bg); border-radius: var(--radius-sm);">
+        <strong>Tip:</strong> Posts that match by LinkedIn URL (saved in the expanded row) will sync most reliably. Add the URL after publishing for best results. Posts already linked to Notion will auto-sync the new metrics.
+      </p>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">
+        <strong>Suggested cadence:</strong> Run this every Friday to keep your performance data fresh.
+      </p>
+      <div class="btn-row" style="margin-top: 14px;">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('help-modal').classList.remove('show')">Got it</button>
+      </div>
     </div>
   </div>
 
