@@ -6,6 +6,7 @@
 <title>LinkedIn Writer and Analyst — Go To 11</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --purple: #9439bf;
@@ -2462,66 +2463,188 @@ function matchPostToRow(post, rowData, postsByUrl) {
   return null;
 }
 
+function normaliseUrl(url) {
+  if (!url) return '';
+  return url.split('?')[0].replace(/\/$/, '').toLowerCase();
+}
+
+function parseLinkedInXlsx(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, { type: 'array' });
+
+  // Find TOP POSTS sheet (case-insensitive)
+  const topPostsSheetName = wb.SheetNames.find(n => /top\s*posts/i.test(n));
+  if (!topPostsSheetName) {
+    throw new Error('Could not find TOP POSTS sheet in the file. Make sure this is a LinkedIn analytics export.');
+  }
+
+  const sheet = wb.Sheets[topPostsSheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+
+  // Find header row (the one containing 'Post URL')
+  let headerRowIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    if (rows[i].some(cell => typeof cell === 'string' && /post\s*url/i.test(cell))) {
+      headerRowIdx = i;
+      break;
+    }
+  }
+  if (headerRowIdx === -1) {
+    throw new Error('Could not find header row with Post URL in the TOP POSTS sheet.');
+  }
+
+  const headers = rows[headerRowIdx].map(c => (c || '').toString().trim());
+  // LinkedIn dual-column layout: left side (Post URL, Post publish date, Engagements) + right side (Post URL, Post publish date, Impressions)
+  // Find all matching column groups
+  const groups = [];
+  for (let i = 0; i < headers.length; i++) {
+    if (/post\s*url/i.test(headers[i])) {
+      const group = { urlIdx: i, dateIdx: -1, metricIdx: -1, metricName: '' };
+      // Look at next 2-3 cells for date and metric
+      for (let j = i + 1; j < Math.min(i + 4, headers.length); j++) {
+        if (/date/i.test(headers[j])) group.dateIdx = j;
+        else if (/engagement|impression|reaction|like|comment|share|repost|click|view/i.test(headers[j])) {
+          group.metricIdx = j;
+          group.metricName = headers[j].toLowerCase();
+        }
+      }
+      if (group.metricIdx >= 0) groups.push(group);
+    }
+  }
+
+  if (groups.length === 0) {
+    throw new Error('Could not find any metric columns in the TOP POSTS sheet.');
+  }
+
+  // Merge data by URL
+  const byUrl = {};
+  for (let i = headerRowIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    for (const g of groups) {
+      const url = row[g.urlIdx];
+      if (!url || typeof url !== 'string') continue;
+      const normUrl = normaliseUrl(url);
+      if (!byUrl[normUrl]) {
+        byUrl[normUrl] = { url, date: null, impressions: null, reactions: null, comments: null, shares: null, clicks: null, engagements: null };
+      }
+      const entry = byUrl[normUrl];
+      if (g.dateIdx >= 0 && row[g.dateIdx] && !entry.date) {
+        entry.date = formatExcelDate(row[g.dateIdx]);
+      }
+      const value = row[g.metricIdx];
+      if (typeof value === 'number') {
+        if (/impression/.test(g.metricName)) entry.impressions = value;
+        else if (/engagement/.test(g.metricName)) entry.engagements = value;
+        else if (/reaction|like/.test(g.metricName)) entry.reactions = value;
+        else if (/comment/.test(g.metricName)) entry.comments = value;
+        else if (/share|repost/.test(g.metricName)) entry.shares = value;
+        else if (/click|view/.test(g.metricName)) entry.clicks = value;
+      }
+    }
+  }
+
+  return Object.values(byUrl).filter(e => e.url);
+}
+
+function formatExcelDate(val) {
+  if (val instanceof Date) {
+    return val.toISOString().split('T')[0];
+  }
+  if (typeof val === 'string') {
+    // Try parsing M/D/YYYY
+    const m = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) {
+      return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+    }
+    return val;
+  }
+  if (typeof val === 'number') {
+    // Excel serial date
+    const date = new Date((val - 25569) * 86400 * 1000);
+    return date.toISOString().split('T')[0];
+  }
+  return null;
+}
+
 function handleCsvFile(event) {
   const file = event.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
+  const isXlsx = /\.xlsx$/i.test(file.name);
+
   reader.onload = (e) => {
     try {
-      const rows = parseCsv(e.target.result);
-      if (rows.length < 2) {
-        alert('CSV is empty or invalid.');
-        return;
-      }
+      let rowsData = [];
 
-      const headers = rows[0].map(h => h.trim());
-      const dateIdx = findColumn(headers, ['Date', 'Created date', 'Post date', 'Publication date', 'Created']);
-      const textIdx = findColumn(headers, ['Post title', 'Post', 'Content', 'Text', 'Title']);
-      const urlIdx = findColumn(headers, ['Post link', 'URL', 'Link', 'Post URL']);
-      const imprIdx = findColumn(headers, ['Impressions', 'Impr.']);
-      const reactIdx = findColumn(headers, ['Reactions', 'Likes']);
-      const commentIdx = findColumn(headers, ['Comments']);
-      const shareIdx = findColumn(headers, ['Reposts', 'Shares']);
-      const clickIdx = findColumn(headers, ['Clicks', 'Click-throughs']);
-      const engRateIdx = findColumn(headers, ['Engagement rate', 'Eng. rate']);
+      if (isXlsx) {
+        if (typeof XLSX === 'undefined') {
+          alert('XLSX library failed to load. Please reload the page and try again.');
+          return;
+        }
+        rowsData = parseLinkedInXlsx(e.target.result);
+      } else {
+        // Plain CSV fallback
+        const csvRows = parseCsv(e.target.result);
+        if (csvRows.length < 2) {
+          alert('CSV is empty or invalid.');
+          return;
+        }
+        const headers = csvRows[0].map(h => h.trim());
+        const dateIdx = findColumn(headers, ['Date', 'Post publish date', 'Created date', 'Post date', 'Publication date']);
+        const urlIdx = findColumn(headers, ['Post URL', 'Post link', 'URL', 'Link']);
+        const imprIdx = findColumn(headers, ['Impressions']);
+        const reactIdx = findColumn(headers, ['Reactions', 'Likes']);
+        const commentIdx = findColumn(headers, ['Comments']);
+        const shareIdx = findColumn(headers, ['Reposts', 'Shares']);
+        const clickIdx = findColumn(headers, ['Clicks']);
+        const engIdx = findColumn(headers, ['Engagements', 'Engagement']);
 
-      if (imprIdx < 0 && reactIdx < 0 && commentIdx < 0) {
-        alert('Could not find any metric columns in the CSV. Make sure you exported from LinkedIn Analytics.');
-        return;
+        if (imprIdx < 0 && reactIdx < 0 && commentIdx < 0 && engIdx < 0) {
+          alert('Could not find any metric columns in the CSV. Try the LinkedIn .xlsx export instead.');
+          return;
+        }
+
+        for (let i = 1; i < csvRows.length; i++) {
+          const row = csvRows[i];
+          rowsData.push({
+            url: urlIdx >= 0 ? (row[urlIdx] || '').trim() : '',
+            date: dateIdx >= 0 ? formatExcelDate((row[dateIdx] || '').trim()) : null,
+            impressions: imprIdx >= 0 ? parseInt((row[imprIdx] || '').replace(/[,\s]/g, ''), 10) || null : null,
+            reactions: reactIdx >= 0 ? parseInt((row[reactIdx] || '').replace(/[,\s]/g, ''), 10) || null : null,
+            comments: commentIdx >= 0 ? parseInt((row[commentIdx] || '').replace(/[,\s]/g, ''), 10) || null : null,
+            shares: shareIdx >= 0 ? parseInt((row[shareIdx] || '').replace(/[,\s]/g, ''), 10) || null : null,
+            clicks: clickIdx >= 0 ? parseInt((row[clickIdx] || '').replace(/[,\s]/g, ''), 10) || null : null,
+            engagements: engIdx >= 0 ? parseInt((row[engIdx] || '').replace(/[,\s]/g, ''), 10) || null : null,
+          });
+        }
       }
 
       const posts = loadPosts();
-      const postsByUrl = {};
-      posts.forEach(p => { if (p.linkedinUrl) postsByUrl[p.linkedinUrl] = p; });
-
       const matches = [];
       const unmatched = [];
 
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        const rowData = {
-          date: dateIdx >= 0 ? (row[dateIdx] || '').trim() : '',
-          text: textIdx >= 0 ? (row[textIdx] || '').trim() : '',
-          url: urlIdx >= 0 ? (row[urlIdx] || '').trim() : '',
-          impressions: imprIdx >= 0 ? parseInt((row[imprIdx] || '').replace(/[,\s]/g, ''), 10) : null,
-          reactions: reactIdx >= 0 ? parseInt((row[reactIdx] || '').replace(/[,\s]/g, ''), 10) : null,
-          comments: commentIdx >= 0 ? parseInt((row[commentIdx] || '').replace(/[,\s]/g, ''), 10) : null,
-          shares: shareIdx >= 0 ? parseInt((row[shareIdx] || '').replace(/[,\s]/g, ''), 10) : null,
-          clicks: clickIdx >= 0 ? parseInt((row[clickIdx] || '').replace(/[,\s]/g, ''), 10) : null,
-        };
-
-        if (!rowData.text && !rowData.url) continue;
+      for (const rowData of rowsData) {
+        if (!rowData.url) continue;
+        const normRowUrl = normaliseUrl(rowData.url);
 
         let matchedPost = null;
-        let matchInfo = null;
         for (const post of posts) {
-          const m = matchPostToRow(post, rowData, postsByUrl);
-          if (m) { matchedPost = post; matchInfo = m; break; }
+          if (post.linkedinUrl && normaliseUrl(post.linkedinUrl) === normRowUrl) {
+            matchedPost = post;
+            break;
+          }
+        }
+
+        // Fallback: match by date if no URL match and only one post on that date
+        if (!matchedPost && rowData.date) {
+          const sameDay = posts.filter(p => (p.publishDate || p.date || '').slice(0, 10) === rowData.date);
+          if (sameDay.length === 1) {
+            matchedPost = sameDay[0];
+          }
         }
 
         if (matchedPost) {
-          matches.push({ post: matchedPost, rowData, matchInfo });
+          matches.push({ post: matchedPost, rowData });
         } else {
           unmatched.push(rowData);
         }
@@ -2530,11 +2653,16 @@ function handleCsvFile(event) {
       pendingImport = { matches, unmatched };
       showImportModal();
     } catch (err) {
-      alert('Failed to parse CSV: ' + err.message);
+      alert('Failed to parse file: ' + err.message);
     }
   };
-  reader.readAsText(file);
-  event.target.value = ''; // reset so same file can be uploaded again
+
+  if (isXlsx) {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
+  }
+  event.target.value = '';
 }
 
 function showImportModal() {
@@ -2550,9 +2678,15 @@ function showImportModal() {
     html += `<div style="font-family: Nunito, sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-top: 10px; margin-bottom: 6px;">Matched (${matchCount})</div>`;
     pendingImport.matches.forEach(m => {
       const preview = (m.post.post || '').split('\n')[0].slice(0, 60);
+      const r = m.rowData;
+      const stats = [];
+      if (r.impressions != null) stats.push(`${r.impressions} impr`);
+      if (r.engagements != null) stats.push(`${r.engagements} eng`);
+      if (r.reactions != null) stats.push(`${r.reactions} react`);
+      if (r.comments != null) stats.push(`${r.comments} comm`);
       html += `<div style="padding: 6px 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px;">
         <div style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escHtml(preview)}</div>
-        <div style="font-family: Nunito, sans-serif; font-weight: 700; color: var(--purple); flex-shrink: 0;">${m.rowData.impressions ?? '—'} impr</div>
+        <div style="font-family: Nunito, sans-serif; font-weight: 700; color: var(--purple); flex-shrink: 0; font-size: 11px;">${stats.join(' · ')}</div>
       </div>`;
     });
   }
@@ -2585,6 +2719,10 @@ async function confirmImport() {
     if (r.comments != null && !isNaN(r.comments)) post.metrics.comments = r.comments;
     if (r.shares != null && !isNaN(r.shares)) post.metrics.shares = r.shares;
     if (r.clicks != null && !isNaN(r.clicks)) post.metrics.clicks = r.clicks;
+    // LinkedIn's "engagements" is total engagement count. Store as reactions if no breakdown is available.
+    if (r.engagements != null && !isNaN(r.engagements) && r.reactions == null) {
+      post.metrics.reactions = r.engagements;
+    }
   }
 
   savePosts(posts);
