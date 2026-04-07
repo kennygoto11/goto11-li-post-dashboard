@@ -1258,7 +1258,24 @@
 
   <div class="tracker-header">
     <div class="tracker-title">Post tracker</div>
-    <span style="font-size: 12px; color: var(--text-muted);">Data stored locally in this browser</span>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <input type="file" id="csv-input" accept=".csv,.xlsx" style="display: none;" onchange="handleCsvFile(event)">
+      <button class="btn btn-sm" onclick="document.getElementById('csv-input').click()">Import LinkedIn CSV</button>
+      <span style="font-size: 12px; color: var(--text-muted);">Data stored locally</span>
+    </div>
+  </div>
+
+  <!-- Import results modal -->
+  <div class="modal-overlay" id="import-modal">
+    <div class="modal" style="max-width: 560px;">
+      <h3>Import results</h3>
+      <div id="import-summary" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;"></div>
+      <div id="import-details" style="max-height: 320px; overflow-y: auto; font-size: 12px;"></div>
+      <div class="btn-row" style="margin-top: 14px;">
+        <button class="btn btn-primary btn-sm" onclick="confirmImport()">Apply changes</button>
+        <button class="btn btn-sm" onclick="closeImportModal()">Cancel</button>
+      </div>
+    </div>
   </div>
 
   <!-- Summary bar -->
@@ -2344,6 +2361,233 @@ function editPost(postId) {
   autoCheckPost(state.post).then(results => {
     if (results) renderChecklist(results);
   });
+}
+
+// ── CSV Import ──
+let pendingImport = null;
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else { cur += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { row.push(cur); cur = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (cur || row.length) { row.push(cur); rows.push(row); }
+        row = []; cur = '';
+        if (c === '\r' && text[i + 1] === '\n') i++;
+      } else { cur += c; }
+    }
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(cell => cell.trim()));
+}
+
+function findColumn(headers, candidates) {
+  for (const candidate of candidates) {
+    const idx = headers.findIndex(h => h.toLowerCase().trim() === candidate.toLowerCase());
+    if (idx >= 0) return idx;
+  }
+  // Fuzzy match: contains
+  for (const candidate of candidates) {
+    const idx = headers.findIndex(h => h.toLowerCase().includes(candidate.toLowerCase()));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function normaliseText(s) {
+  return (s || '').toLowerCase().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '').trim();
+}
+
+function matchPostToRow(post, rowData, postsByUrl) {
+  // 1. URL match (best)
+  if (rowData.url && post.linkedinUrl && post.linkedinUrl.includes(rowData.url.replace(/\?.*$/, ''))) {
+    return { confidence: 'high', reason: 'URL match' };
+  }
+  if (rowData.url && postsByUrl[rowData.url]) {
+    return { confidence: 'high', reason: 'URL match' };
+  }
+  // 2. Text match (first 50 chars normalised)
+  if (rowData.text) {
+    const rowSnippet = normaliseText(rowData.text).slice(0, 80);
+    const postSnippet = normaliseText(post.post).slice(0, 80);
+    if (rowSnippet && postSnippet && (rowSnippet.startsWith(postSnippet.slice(0, 40)) || postSnippet.startsWith(rowSnippet.slice(0, 40)))) {
+      return { confidence: 'high', reason: 'Text match' };
+    }
+  }
+  // 3. Date + partial text match
+  if (rowData.date && rowData.text) {
+    const rowDate = rowData.date.slice(0, 10);
+    const postDate = (post.publishDate || post.date || '').slice(0, 10);
+    if (rowDate === postDate) {
+      const rowSnippet = normaliseText(rowData.text).slice(0, 30);
+      const postSnippet = normaliseText(post.post).slice(0, 30);
+      if (rowSnippet && postSnippet && rowSnippet === postSnippet) {
+        return { confidence: 'medium', reason: 'Date + text match' };
+      }
+    }
+  }
+  return null;
+}
+
+function handleCsvFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const rows = parseCsv(e.target.result);
+      if (rows.length < 2) {
+        alert('CSV is empty or invalid.');
+        return;
+      }
+
+      const headers = rows[0].map(h => h.trim());
+      const dateIdx = findColumn(headers, ['Date', 'Created date', 'Post date', 'Publication date', 'Created']);
+      const textIdx = findColumn(headers, ['Post title', 'Post', 'Content', 'Text', 'Title']);
+      const urlIdx = findColumn(headers, ['Post link', 'URL', 'Link', 'Post URL']);
+      const imprIdx = findColumn(headers, ['Impressions', 'Impr.']);
+      const reactIdx = findColumn(headers, ['Reactions', 'Likes']);
+      const commentIdx = findColumn(headers, ['Comments']);
+      const shareIdx = findColumn(headers, ['Reposts', 'Shares']);
+      const clickIdx = findColumn(headers, ['Clicks', 'Click-throughs']);
+      const engRateIdx = findColumn(headers, ['Engagement rate', 'Eng. rate']);
+
+      if (imprIdx < 0 && reactIdx < 0 && commentIdx < 0) {
+        alert('Could not find any metric columns in the CSV. Make sure you exported from LinkedIn Analytics.');
+        return;
+      }
+
+      const posts = loadPosts();
+      const postsByUrl = {};
+      posts.forEach(p => { if (p.linkedinUrl) postsByUrl[p.linkedinUrl] = p; });
+
+      const matches = [];
+      const unmatched = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const rowData = {
+          date: dateIdx >= 0 ? (row[dateIdx] || '').trim() : '',
+          text: textIdx >= 0 ? (row[textIdx] || '').trim() : '',
+          url: urlIdx >= 0 ? (row[urlIdx] || '').trim() : '',
+          impressions: imprIdx >= 0 ? parseInt((row[imprIdx] || '').replace(/[,\s]/g, ''), 10) : null,
+          reactions: reactIdx >= 0 ? parseInt((row[reactIdx] || '').replace(/[,\s]/g, ''), 10) : null,
+          comments: commentIdx >= 0 ? parseInt((row[commentIdx] || '').replace(/[,\s]/g, ''), 10) : null,
+          shares: shareIdx >= 0 ? parseInt((row[shareIdx] || '').replace(/[,\s]/g, ''), 10) : null,
+          clicks: clickIdx >= 0 ? parseInt((row[clickIdx] || '').replace(/[,\s]/g, ''), 10) : null,
+        };
+
+        if (!rowData.text && !rowData.url) continue;
+
+        let matchedPost = null;
+        let matchInfo = null;
+        for (const post of posts) {
+          const m = matchPostToRow(post, rowData, postsByUrl);
+          if (m) { matchedPost = post; matchInfo = m; break; }
+        }
+
+        if (matchedPost) {
+          matches.push({ post: matchedPost, rowData, matchInfo });
+        } else {
+          unmatched.push(rowData);
+        }
+      }
+
+      pendingImport = { matches, unmatched };
+      showImportModal();
+    } catch (err) {
+      alert('Failed to parse CSV: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset so same file can be uploaded again
+}
+
+function showImportModal() {
+  const summary = document.getElementById('import-summary');
+  const details = document.getElementById('import-details');
+
+  const matchCount = pendingImport.matches.length;
+  const unmatchedCount = pendingImport.unmatched.length;
+  summary.innerHTML = `<strong>${matchCount}</strong> posts matched. <strong>${unmatchedCount}</strong> rows could not be matched. Review and apply.`;
+
+  let html = '';
+  if (matchCount > 0) {
+    html += `<div style="font-family: Nunito, sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-top: 10px; margin-bottom: 6px;">Matched (${matchCount})</div>`;
+    pendingImport.matches.forEach(m => {
+      const preview = (m.post.post || '').split('\n')[0].slice(0, 60);
+      html += `<div style="padding: 6px 8px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px;">
+        <div style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escHtml(preview)}</div>
+        <div style="font-family: Nunito, sans-serif; font-weight: 700; color: var(--purple); flex-shrink: 0;">${m.rowData.impressions ?? '—'} impr</div>
+      </div>`;
+    });
+  }
+  if (unmatchedCount > 0) {
+    html += `<div style="font-family: Nunito, sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-top: 14px; margin-bottom: 6px;">Unmatched (${unmatchedCount})</div>`;
+    pendingImport.unmatched.forEach(u => {
+      const preview = (u.text || u.url || '').slice(0, 60);
+      html += `<div style="padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text-muted);">${escHtml(preview)}</div>`;
+    });
+  }
+  details.innerHTML = html;
+  document.getElementById('import-modal').classList.add('show');
+}
+
+function closeImportModal() {
+  document.getElementById('import-modal').classList.remove('show');
+  pendingImport = null;
+}
+
+async function confirmImport() {
+  if (!pendingImport) return;
+  const posts = loadPosts();
+
+  for (const m of pendingImport.matches) {
+    const post = posts.find(p => p.id === m.post.id);
+    if (!post) continue;
+    const r = m.rowData;
+    if (r.impressions != null && !isNaN(r.impressions)) post.metrics.impressions = r.impressions;
+    if (r.reactions != null && !isNaN(r.reactions)) post.metrics.reactions = r.reactions;
+    if (r.comments != null && !isNaN(r.comments)) post.metrics.comments = r.comments;
+    if (r.shares != null && !isNaN(r.shares)) post.metrics.shares = r.shares;
+    if (r.clicks != null && !isNaN(r.clicks)) post.metrics.clicks = r.clicks;
+  }
+
+  savePosts(posts);
+  renderTracker();
+
+  // Re-sync updated posts to Notion if they have a Notion page ID
+  const toSync = pendingImport.matches
+    .map(m => posts.find(p => p.id === m.post.id))
+    .filter(p => p && p.notionPageId);
+
+  closeImportModal();
+
+  if (toSync.length > 0) {
+    let synced = 0;
+    for (const post of toSync) {
+      try {
+        await fetch('/api/notion-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(post)
+        });
+        synced++;
+      } catch {}
+    }
+    alert(`Imported ${pendingImport ? 0 : toSync.length} matches. Synced ${synced} updates to Notion.`);
+  }
 }
 
 async function syncPostToNotion(postId) {
