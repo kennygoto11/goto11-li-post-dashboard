@@ -2274,6 +2274,7 @@ function renderTracker() {
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button class="btn btn-primary btn-sm" onclick="saveExpanded('${p.id}')">Save changes</button>
             <button class="btn btn-sm" onclick="editPost('${p.id}')">Edit in studio</button>
+            <button class="btn btn-sm" onclick="syncPostToNotion('${p.id}')">${p.notionPageId ? 'Re-sync to Notion' : 'Sync to Notion'}</button>
             <button class="btn btn-sm" onclick="deletePost('${p.id}')" style="color: var(--red);">Delete post</button>
           </div>
         </div>`;
@@ -2343,6 +2344,31 @@ function editPost(postId) {
   autoCheckPost(state.post).then(results => {
     if (results) renderChecklist(results);
   });
+}
+
+async function syncPostToNotion(postId) {
+  const posts = loadPosts();
+  const post = posts.find(p => p.id === postId);
+  if (!post) return;
+
+  try {
+    const res = await fetch('/api/notion-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(post)
+    });
+    const data = await res.json();
+    if (data.success && data.pageId) {
+      post.notionPageId = data.pageId;
+      savePosts(posts);
+      renderTracker();
+      alert('Synced to Notion successfully.');
+    } else {
+      alert('Notion sync failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Notion sync failed: ' + e.message);
+  }
 }
 
 function deletePost(postId) {
