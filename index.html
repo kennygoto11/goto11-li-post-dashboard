@@ -1462,7 +1462,7 @@ After writing, do one focused pass: scan every verb, noun, and adjective. If the
 const STORAGE_KEY = 'goto11_posts';
 const API_KEY_KEY = 'goto11_api_key';
 
-let state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '', audience: '', length: 'standard', cta: '', pillar: '' };
+let state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '', audience: '', length: 'standard', cta: '', pillar: '', editingId: null };
 
 // ── API Key ──
 function getApiKey() { return localStorage.getItem(API_KEY_KEY) || ''; }
@@ -1547,7 +1547,7 @@ function setStep(n) {
 function goBack(n) { setStep(n); }
 
 function startOver() {
-  state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '', audience: '', length: 'standard', cta: '', pillar: '' };
+  state = { seed: '', format: 'auto', hooks: [], selected: null, hookLabel: '', post: '', audience: '', length: 'standard', cta: '', pillar: '', editingId: null };
   document.getElementById('seed').value = '';
   document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
   document.querySelector('[data-format="auto"]').classList.add('selected');
@@ -1924,35 +1924,59 @@ async function confirmSave() {
 
   const posts = loadPosts();
   const now = new Date();
-  const post = {
-    id: now.getTime().toString(),
-    date: now.toISOString().split('T')[0],
-    seed: state.seed,
-    hook: state.hooks[state.selected] || '',
-    hookLabel: state.hookLabel || '',
-    format: state.format,
-    audience: state.audience,
-    length: state.length,
-    ctaStyle: state.cta,
-    pillar: state.pillar,
-    post: postText,
-    status: saveStatus,
-    publishDate: document.getElementById('save-date').value || null,
-    linkedinUrl: null,
-    thread: saveThread,
-    topic: document.getElementById('save-topic').value.trim() || '',
-    ctaType: null,
-    notes: '',
-    notionPageId: null,
-    metrics: {
-      impressions: null, reactions: null, comments: null,
-      shares: null, saves: null, reposts: null,
-      clicks: null, followsGained: null, profileViews: null
-    }
-  };
+  const isEditing = state.editingId != null;
+  let post;
 
-  // Save locally first
-  posts.unshift(post);
+  if (isEditing) {
+    // Update existing post
+    post = posts.find(p => p.id === state.editingId);
+    if (!post) return;
+    post.post = postText;
+    post.seed = state.seed;
+    post.hook = state.hooks[state.selected] || post.hook;
+    post.hookLabel = state.hookLabel || post.hookLabel;
+    post.format = state.format;
+    post.audience = state.audience;
+    post.length = state.length;
+    post.ctaStyle = state.cta;
+    post.pillar = state.pillar;
+    post.status = saveStatus;
+    post.publishDate = document.getElementById('save-date').value || post.publishDate;
+    post.thread = saveThread || post.thread;
+    post.topic = document.getElementById('save-topic').value.trim() || post.topic;
+    state.editingId = null;
+  } else {
+    // Create new post
+    post = {
+      id: now.getTime().toString(),
+      date: now.toISOString().split('T')[0],
+      seed: state.seed,
+      hook: state.hooks[state.selected] || '',
+      hookLabel: state.hookLabel || '',
+      format: state.format,
+      audience: state.audience,
+      length: state.length,
+      ctaStyle: state.cta,
+      pillar: state.pillar,
+      post: postText,
+      status: saveStatus,
+      publishDate: document.getElementById('save-date').value || null,
+      linkedinUrl: null,
+      thread: saveThread,
+      topic: document.getElementById('save-topic').value.trim() || '',
+      ctaType: null,
+      notes: '',
+      notionPageId: null,
+      metrics: {
+        impressions: null, reactions: null, comments: null,
+        shares: null, saves: null, reposts: null,
+        clicks: null, followsGained: null, profileViews: null
+      }
+    };
+    posts.unshift(post);
+  }
+
+  // Save locally
   savePosts(posts);
   renderTracker();
 
@@ -2221,6 +2245,7 @@ function renderTracker() {
           <hr class="divider">
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button class="btn btn-primary btn-sm" onclick="saveExpanded('${p.id}')">Save changes</button>
+            <button class="btn btn-sm" onclick="editPost('${p.id}')">Edit in studio</button>
             <button class="btn btn-sm" onclick="deletePost('${p.id}')" style="color: var(--red);">Delete post</button>
           </div>
         </div>`;
@@ -2255,6 +2280,41 @@ function saveExpanded(postId) {
 
   savePosts(posts);
   renderTracker();
+}
+
+function editPost(postId) {
+  const posts = loadPosts();
+  const post = posts.find(p => p.id === postId);
+  if (!post) return;
+
+  // Load the post back into the editor
+  state.seed = post.seed || '';
+  state.format = post.format || 'auto';
+  state.hooks = post.hook ? [post.hook] : [];
+  state.selected = post.hook ? 0 : null;
+  state.hookLabel = post.hookLabel || '';
+  state.post = post.post || '';
+  state.audience = post.audience || '';
+  state.length = post.length || 'standard';
+  state.cta = post.ctaStyle || '';
+  state.pillar = post.pillar || '';
+
+  // Set the editing post ID so save updates instead of creating new
+  state.editingId = postId;
+
+  // Populate the UI
+  document.getElementById('post-out').value = state.post;
+  document.getElementById('format-badge-3').textContent = formatLabel();
+  document.getElementById('save-ok').style.display = 'none';
+  renderChecklist(null);
+  updateWC();
+  expandedId = null;
+  setStep(3);
+
+  // Run auto-check in background
+  autoCheckPost(state.post).then(results => {
+    if (results) renderChecklist(results);
+  });
 }
 
 function deletePost(postId) {
