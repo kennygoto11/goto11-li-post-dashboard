@@ -62,21 +62,20 @@
   }
 
   .logo {
-    font-family: 'Nunito', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--purple);
-    letter-spacing: -0.01em;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    text-decoration: none;
   }
 
-  .logo-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--purple);
-    flex-shrink: 0;
+  .logo-mark { flex-shrink: 0; }
+
+  .logo-text {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--purple);
+    letter-spacing: -0.01em;
   }
 
   .header-right {
@@ -85,10 +84,24 @@
     gap: 12px;
   }
 
-  .header-label {
-    font-size: 13px;
+  /* ── Page title ── */
+  .page-title {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .page-title h1 {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+
+  .page-title p {
+    font-size: 0.85rem;
     color: var(--text-muted);
-    font-family: 'PT Sans', sans-serif;
+    margin-top: 2px;
   }
 
   .api-key-btn {
@@ -972,12 +985,21 @@
 <body>
 
 <header class="header">
-  <div class="logo">
-    <div class="logo-dot"></div>
-    Go To 11
-    <span style="color: var(--border-strong); font-weight: 400; margin: 0 4px;">|</span>
-    <span style="color: var(--text-primary); font-weight: 700;">LinkedIn Writer and Analyst</span>
-  </div>
+  <a class="logo" href="https://goto11-tools.netlify.app" title="Back to Tools">
+    <svg class="logo-mark" width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="34" stroke="#9439bf" stroke-width="5" fill="none"/>
+      <circle cx="58" cy="52" r="4" stroke="#9439bf" stroke-width="2.5" fill="none"/>
+      <line x1="50" y1="6" x2="50" y2="16" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+      <line x1="50" y1="84" x2="50" y2="94" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+      <line x1="6" y1="50" x2="16" y2="50" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+      <line x1="84" y1="50" x2="94" y2="50" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+      <line x1="19" y1="19" x2="26" y2="26" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+      <line x1="74" y1="74" x2="81" y2="81" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+      <line x1="81" y1="19" x2="74" y2="26" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+      <line x1="26" y1="74" x2="19" y2="81" stroke="#9439bf" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <span class="logo-text">Go To 11</span>
+  </a>
   <div class="header-right">
     <button class="api-key-btn" id="api-key-btn" onclick="showApiKeyModal()">API key</button>
   </div>
@@ -1000,6 +1022,11 @@
 </div>
 
 <main class="main">
+
+  <div class="page-title">
+    <h1>LinkedIn Writer and Analyst</h1>
+    <p>Write, track, and analyse LinkedIn posts</p>
+  </div>
 
   <!-- Step indicator -->
   <div class="steps">
