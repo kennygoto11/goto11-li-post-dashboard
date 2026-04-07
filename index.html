@@ -1212,10 +1212,16 @@
         <label class="field-label">Topic tag</label>
         <input type="text" id="save-topic" placeholder="e.g. preparation, framing, velocity" style="font-size: 14px;">
       </div>
+      <label style="display: flex; align-items: center; gap: 8px; margin-top: 6px; cursor: pointer;">
+        <input type="checkbox" id="save-notion" checked style="accent-color: var(--purple); width: 16px; height: 16px;">
+        <span style="font-size: 13px; color: var(--text-secondary);">Also save to Notion Content Calendar</span>
+      </label>
+
       <div class="btn-row" style="margin-top: 14px;">
-        <button class="btn btn-primary btn-sm" onclick="confirmSave()">Save</button>
+        <button class="btn btn-primary btn-sm" id="confirm-save-btn" onclick="confirmSave()">Save</button>
         <button class="btn btn-sm" onclick="closeSaveModal()">Cancel</button>
       </div>
+      <div class="error" id="error-save" style="margin-top: 8px;"></div>
     </div>
   </div>
 
@@ -1856,7 +1862,7 @@ function pickThread(t) {
   });
 }
 
-function confirmSave() {
+async function confirmSave() {
   const postText = document.getElementById('post-out').value.trim();
   if (!postText) return;
 
@@ -1881,6 +1887,7 @@ function confirmSave() {
     topic: document.getElementById('save-topic').value.trim() || '',
     ctaType: null,
     notes: '',
+    notionPageId: null,
     metrics: {
       impressions: null, reactions: null, comments: null,
       shares: null, saves: null, reposts: null,
@@ -1888,13 +1895,46 @@ function confirmSave() {
     }
   };
 
+  // Save locally first
   posts.unshift(post);
   savePosts(posts);
-  closeSaveModal();
   renderTracker();
+
+  // Notion sync
+  const syncNotion = document.getElementById('save-notion').checked;
+  if (syncNotion) {
+    document.getElementById('confirm-save-btn').disabled = true;
+    document.getElementById('confirm-save-btn').textContent = 'Saving to Notion...';
+    showError('save', '');
+    try {
+      const res = await fetch('/api/notion-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(post)
+      });
+      const data = await res.json();
+      if (data.success && data.pageId) {
+        // Store the Notion page ID for future metric updates
+        post.notionPageId = data.pageId;
+        const updatedPosts = loadPosts();
+        const found = updatedPosts.find(p => p.id === post.id);
+        if (found) { found.notionPageId = data.pageId; savePosts(updatedPosts); }
+      } else if (data.error) {
+        showError('save', 'Notion sync: ' + data.error);
+      }
+    } catch (e) {
+      showError('save', 'Notion sync failed. Post saved locally.');
+    } finally {
+      document.getElementById('confirm-save-btn').disabled = false;
+      document.getElementById('confirm-save-btn').textContent = 'Save';
+    }
+  }
+
+  closeSaveModal();
 
   const ok = document.getElementById('save-ok');
   ok.style.display = 'block';
+  ok.textContent = syncNotion ? 'Post saved to tracker and Notion.' : 'Post saved to tracker.';
   setTimeout(() => { ok.style.display = 'none'; }, 3000);
 }
 
