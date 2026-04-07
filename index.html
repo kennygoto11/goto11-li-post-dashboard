@@ -1726,9 +1726,13 @@ async function generatePost() {
     document.getElementById('post-out').value = state.post;
     document.getElementById('format-badge-3').textContent = formatLabel();
     document.getElementById('save-ok').style.display = 'none';
-    renderChecklist();
+    renderChecklist(null);
     updateWC();
     setStep(3);
+    // Auto-check in background
+    autoCheckPost(state.post).then(results => {
+      if (results) renderChecklist(results);
+    });
   } catch (e) {
     showError(2, 'Something went wrong: ' + e.message);
   } finally {
@@ -1748,8 +1752,12 @@ async function regenPost() {
     const text = await callClaude(prompt);
     state.post = text.trim();
     document.getElementById('post-out').value = state.post;
+    renderChecklist(null);
     updateWC();
     setStep(3);
+    autoCheckPost(state.post).then(results => {
+      if (results) renderChecklist(results);
+    });
   } catch (e) {
     showError(2, 'Something went wrong: ' + e.message);
   } finally {
@@ -1772,9 +1780,14 @@ async function revisePost() {
 
   try {
     const text = await callClaude(prompt);
-    document.getElementById('post-out').value = text.trim();
+    const revised = text.trim();
+    document.getElementById('post-out').value = revised;
     document.getElementById('revision-prompt').value = '';
     updateWC();
+    renderChecklist(null);
+    autoCheckPost(revised).then(results => {
+      if (results) renderChecklist(results);
+    });
   } catch (e) {
     showError(3, 'Something went wrong: ' + e.message);
   } finally {
@@ -1784,7 +1797,9 @@ async function revisePost() {
 }
 
 // ── Checklist ──
-function renderChecklist() {
+let checkResults = null;
+
+function renderChecklist(results) {
   const container = document.getElementById('checklist');
   container.innerHTML = '';
 
@@ -1803,9 +1818,12 @@ function renderChecklist() {
     container.appendChild(heading);
 
     section.items.forEach(item => {
+      const pass = results ? results[idx] : null;
       const label = document.createElement('label');
-      label.className = 'check-item';
-      label.innerHTML = `<input type="checkbox" id="chk-${idx}"><span>${item}</span>`;
+      label.className = 'check-item' + (pass === true ? ' done' : '');
+      const checked = pass === true ? ' checked' : '';
+      const failStyle = pass === false ? ' style="color: var(--red); font-weight: 700;"' : '';
+      label.innerHTML = `<input type="checkbox" id="chk-${idx}"${checked}><span${failStyle}>${item}${pass === false ? ' ✗' : ''}</span>`;
       label.querySelector('input').addEventListener('change', function () {
         label.classList.toggle('done', this.checked);
       });
@@ -1813,6 +1831,44 @@ function renderChecklist() {
       idx++;
     });
   });
+
+  // Summary
+  if (results) {
+    const passed = results.filter(r => r === true).length;
+    const total = results.length;
+    const summary = document.createElement('div');
+    summary.style.cssText = 'margin-top: 10px; font-size: 13px; font-family: Nunito, sans-serif; font-weight: 700;';
+    if (passed === total) {
+      summary.style.color = 'var(--green)';
+      summary.textContent = `All ${total} checks passed.`;
+    } else {
+      summary.style.color = 'var(--red)';
+      summary.textContent = `${passed} of ${total} passed. Review the flagged items above.`;
+    }
+    container.appendChild(summary);
+  }
+}
+
+async function autoCheckPost(postText) {
+  const allChecks = [...CHECKS_VOICE, ...CHECKS_CRAFT, ...CHECKS_STRUCTURE];
+  const numbered = allChecks.map((c, i) => `${i + 1}. ${c}`).join('\n');
+
+  const prompt = `Here is a LinkedIn post written for Kenny Solway:\n\n"${postText}"\n\nEvaluate the post against each checklist item below. For each item, respond with ONLY the number followed by PASS or FAIL. No explanations. No extra text.\n\n${numbered}\n\nRespond in this exact format:\n1. PASS\n2. FAIL\n3. PASS\n...`;
+
+  try {
+    const text = await callClaude(prompt);
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const results = allChecks.map((_, i) => {
+      const line = lines.find(l => l.startsWith(`${i + 1}.`) || l.startsWith(`${i + 1} `));
+      if (!line) return null;
+      if (/PASS/i.test(line)) return true;
+      if (/FAIL/i.test(line)) return false;
+      return null;
+    });
+    return results;
+  } catch {
+    return null;
+  }
 }
 
 // ── Word count ──
